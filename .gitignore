@@ -2,3 +2,4 @@ data
 .env
 .ipynb_checkpoints/
 outputs
+example_refinements.txt
