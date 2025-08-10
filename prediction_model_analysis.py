@@ -88,7 +88,7 @@ import torch
 import itertools
 # model.load_state_dict(torch.load("outputs/models/08-04_lr1e-5_beta.01/epoch99.pt")["model"])
 model = torch.nn.Linear(len(common_bucket_names)*2+len(common_extra_bucket_names)*2+N_TERMS+2,len(common_bucket_names)+1+len(common_extra_bucket_names))
-model.load_state_dict(torch.load("outputs/models/08-07_lr1e-05_lassoweight1e-05_batch32_extra/epoch130.pt")["model"])
+model.load_state_dict(torch.load("outputs/models/08-07_lr3e-04_lassoweight1e-05_batch256_extra/epoch160.pt")["model"])
 
 weights = model.weight.detach().numpy() 
 predecessor_chains=[]
@@ -134,3 +134,4 @@ if __name__=="__main__":
   display_chains(term_chains,"terms:")
   display_chains(chamber_chains,"chamber:")
 
+  

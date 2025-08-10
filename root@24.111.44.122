@@ -10,7 +10,6 @@ import os
 import shutil
 import builtins
 import sys
-import re
 with open("outputs/buckets_08-04_manual-llm-manual.json","r") as file:
   buckets = json.load(file)
 with open("outputs/extra_buckets_08-04.json","r") as file:
@@ -136,7 +135,7 @@ class ActionDataset(torch.utils.data.Dataset):
 ds = ActionDataset("outputs/prediction_vecs_08-07.npz")
 train_dataset,test_dataset,val_dataset = torch.utils.data.random_split(ds,[0.6,0.2,0.2])
 
-def train_model(lr=1e-4,lasso_weight=1e-7,batch_size=32,extra_pred_weight=1,continue_from=None,special_name="",override_previous=False,end_epoch=301,n_epochs=None):
+def train_model(lr=1e-4,lasso_weight=1e-7,batch_size=32,extra_pred_weight=1,load_epoch=None,special_name=""):
   hyperparams={"lr":lr,"lasso_weight":lasso_weight,"batch size":batch_size,"extra_pred_weight":extra_pred_weight}
   print("hyperparameters:",hyperparams)
   train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=batch_size,shuffle=True)
@@ -146,36 +145,23 @@ def train_model(lr=1e-4,lasso_weight=1e-7,batch_size=32,extra_pred_weight=1,cont
   optim = torch.optim.Adam(model.parameters(),lr=lr)
   folder = "outputs/models/08-07_lr{:.0e}_lassoweight{:.0e}_batch{}_extra{}{}".format(lr,lasso_weight,batch_size,extra_pred_weight,special_name)
   log=""
-  if not os.path.exists(folder):
+  if load_epoch:
+      model.load_state_dict(torch.load(f"{folder}/epoch{load_epoch}.pt")["model"])
+      optim.load_state_dict(torch.load(f"{folder}/epoch{load_epoch}.pt")["optim"])
+      for line in open(os.path.join(folder,"log")):
+        log+=line
+        log+="\n"
+  else:
+    if os.path.exists(folder):
+      shutil.rmtree(folder)
     os.mkdir(folder)
     json.dump(hyperparams,open(os.path.join(folder,"hyperparameters.json"),"w"))
-  
-  prev_epochs = sorted([int(re.match(r"epoch([0-9]+)",file)[1]) for file in os.listdir(folder) if re.search(r"epoch[0-9]+",file)])
-  continue_from=prev_epochs[-1] if continue_from==-1 and prev_epochs else continue_from
-  if not prev_epochs and continue_from!=None and continue_from!=-1:
-    raise Exception("Trying to continue a model that doesn't exist")
-  if prev_epochs and continue_from==None :
-    raise Exception("Trying to run a model that already exists without a continue_from")
-  if prev_epochs and  continue_from>prev_epochs[-1]:
-    raise Exception("Trying to load from model state that does not exist")
-  elif prev_epochs and prev_epochs[-1]>continue_from and not override_previous:
-    raise Exception("Trying to override runs without override_previous")
-  if continue_from==-1:
-    continue_from=prev_epochs[-1]
-  model.load_state_dict(torch.load(os.path.join(folder,f"epoch{continue_from}.pt"))["model"])
-  optim.load_state_dict(torch.load(os.path.join(folder,f"epoch{continue_from}.pt"))["optim"])
-  for epoch in prev_epochs:
-    if epoch>continue_from:
-      os.remove(os.path.join(folder,f"epoch{continue_from}.pt"))
   pred_buckets_loss_fn = torch.nn.CrossEntropyLoss()
   pred_extra_buckets_loss_fn = torch.nn.BCEWithLogitsLoss()
   if not os.path.isdir(folder):
       os.mkdir(folder)
   val_pred_buckets_losses=[]
-  start_epoch = continue_from+1 if continue_from else 0
-  if n_epochs:
-    end_epoch=start_epoch+n_epochs
-  for epoch in range(start_epoch,end_epoch):
+  for epoch in range(load_epoch+1 if load_epoch else 0,301):
       for i,(inpt,output) in enumerate(train_loader):
           optim.zero_grad()
           inpt=inpt.float()
@@ -201,20 +187,18 @@ def train_model(lr=1e-4,lasso_weight=1e-7,batch_size=32,extra_pred_weight=1,cont
           pred_buckets_loss/=len(val_loader)
           pred_extra_buckets_loss/=pred_extra_buckets_loss
       val_pred_buckets_losses.append(pred_buckets_loss)
-      
+      if len(val_pred_buckets_losses)>10 and val_pred_buckets_losses[-1]+val_pred_buckets_losses[-2]>val_pred_buckets_losses[-3]+val_pred_buckets_losses[-4]>val_pred_buckets_losses[-5]+val_pred_buckets_losses[-6]:
+        break
       loss_str=f"epoch {epoch}. lasso loss:{lasso_loss} log pred buckets loss:{float(torch.log10(pred_buckets_loss))},log pred extra buckets loss:{float(torch.log10(pred_extra_buckets_loss))} pred buckets loss:{float(pred_buckets_loss)} pred extra buckets loss:{float(pred_extra_buckets_loss)}"
       log+=loss_str+"\n"
-      if epoch%5==0:
+      if epoch<5 or epoch%5==0:
           torch.save({"model":model.state_dict(),"optim":optim.state_dict()},folder+f"/epoch{epoch}.pt")
           with open(os.path.join(folder,"log"),"w") as file:
             file.write(log)
-      if len(val_pred_buckets_losses)>10 and val_pred_buckets_losses[-1]+val_pred_buckets_losses[-2]>val_pred_buckets_losses[-3]+val_pred_buckets_losses[-4]>val_pred_buckets_losses[-5]+val_pred_buckets_losses[-6]:
-        break
       print(loss_str)
 if __name__=="__main__":
   # train_model(lr=3e-4,lasso_weight=1e-5,batch_size=256,load_epoch=100)
-  for lr in [1e-3,1e-4,1e-5]:
-    for lasso_weight in [1e-3,1e-4,1e-5]:
-      for batch_size in [256]:
-        # try:
-        train_model(lr=lr,lasso_weight=lasso_weight,batch_size=batch_size,continue_from=-1)
+  for lr in [3e-4]:
+    for lasso_weight in [1e-5]:
+      for batch_size in [2048,1024,512]:
+        train_model(lr=lr,lasso_weight=lasso_weight,batch_size=batch_size)
