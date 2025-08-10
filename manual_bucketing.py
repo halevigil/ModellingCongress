@@ -138,29 +138,22 @@ def special_buckets_f(action):
     return "DEBATE - The House proceeded with 10 minutes of debate on the Broun (GA) motion to recommit with instructions"
   return None
 
+if __name__=="__main__":
+  committee_spellings,committee_search_item=all_committee_spellings(committees)
+  # Map each action to the committees it is in
+  datasets = [f"data/US/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
+  history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
+  actions = list(history_df["action"])
 
-committee_spellings,committee_search_item=all_committee_spellings(committees)
-# Map each action to the committees it is in
-datasets = [f"data/US/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
-history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
-actions = list(set(history_df["action"]))
-
-# returns a map from action to the committee it is in
-action_committees_map=get_action_committee_map(actions,committee_search_item)
-json.dump(action_committees_map,open("./outputs/action_committees_map.json","w"),indent=2)
-action_committees_map = json.load(open("./outputs/action_committees_map.json","r"))
-
-
+  # returns a map from action to the committee it is in
+  action_committees_map=get_action_committee_map(actions,committee_search_item)
+  json.dump(action_committees_map,open("./outputs/action_committees_map.json","w"),indent=2)
+  action_committees_map = json.load(open("./outputs/action_committees_map.json","r"))
 
 
-
-datasets = [f"data/US/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
-history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
-actions = sorted(list(history_df["action"]))
-
-buckets = bucketing_fn.bucket(actions,similar_after_processing,special_buckets_f)
-with open("outputs/buckets.json","w") as file:
-  json.dump(buckets,file)
+  buckets = bucketing_fn.bucket(actions,similar_after_processing,special_buckets_f)
+  with open("outputs/buckets.json","w") as file:
+    json.dump(buckets,file)
 
 
 

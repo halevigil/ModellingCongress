@@ -1,4 +1,8 @@
-def extra_buckets_f(action):
+from collections import defaultdict
+import re
+import pandas as pd
+import json
+def extra_buckets_map(action):
   out=[]
   regexes={r"^All points of consideration against consideration.*? are waived",\
          r"^ANNOUNCEMENT",r"^APPOINTMENT OF CONFEREE",r"^APPOINTMENT OF.*? CONFEREE",\
@@ -78,3 +82,10 @@ def make_extra_buckets(actions,f):
     for bucket in f(action):
       buckets[bucket].append(action)
   return dict(buckets)
+if __name__=="__main__":  
+  datasets = [f"data/US/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
+  history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
+  actions = list(history_df["action"])
+  extra_buckets = make_extra_buckets(actions,extra_buckets_map)
+  with open("outputs/extra_buckets.json","w") as file:
+    json.dump(extra_buckets,file)

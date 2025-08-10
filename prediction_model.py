@@ -11,53 +11,19 @@ import shutil
 import builtins
 import sys
 import re
-with open("outputs/buckets_08-04_manual-llm-manual.json","r") as file:
-  buckets = json.load(file)
-with open("outputs/extra_buckets_08-04.json","r") as file:
-  extra_buckets = json.load(file)
+import sklearn
 
+with open("outputs/common_bucket_names.json","r") as file:
+  common_bucket_names = json.load(file)
+with open("outputs/common_extra_bucket_names.json","r") as file:
+  common_extra_bucket_names = json.load(file)
+common_bucket_names_inv = {name:i for i,name in enumerate(common_bucket_names)}
+common_extra_bucket_names_inv = {name:i for i,name in enumerate(common_bucket_names)}
 
-datasets = [f"data/US/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
-history_df_by_term=[pd.read_csv(ds) for ds in datasets]
-for i,df in enumerate(history_df_by_term):
-  df["term"]=i+111
-history_df=pd.concat(history_df_by_term)
-
-
-bucket_map={}
-for name in buckets:
-  for action in buckets[name]:
-    bucket_map[action]=name
-extra_bucket_map=defaultdict(list)
-n_read_twice=0
-for name in extra_buckets:
-  for i,action in enumerate(extra_buckets[name]):
-    extra_bucket_map[action].append(name)
-bucket_lens=Counter()
-for action in history_df["action"]:
-  bucket_lens[bucket_map[action]]+=1
-extra_bucket_lens=Counter()
-for i,action in enumerate(history_df["action"]):
-  for extra_bucket in extra_bucket_map[action]:
-    extra_bucket_lens[extra_bucket]+=1
-common_bucket_names = [name for name in buckets.keys() if bucket_lens[name]>=50]
-common_extra_bucket_names = [name for name in extra_buckets.keys() if extra_bucket_lens[name]>=50]
-common_bucket_names_inv={name:i for i,name in enumerate(common_bucket_names)}
-common_extra_bucket_names_inv={name:i for i,name in enumerate(common_extra_bucket_names)}
-
-
-# print(len(unbucketed))
-history_df["bucket"]=history_df["action"].apply(lambda action:bucket_map[action])
-history_df["extra_buckets"]=history_df["action"].apply(lambda action:extra_bucket_map[action])
-bills={bill_id:group for (bill_id,group) in history_df.groupby("bill_id")}
-bill_ids = list(bills.keys())
-
-MIN_TERM=min(history_df["term"])
-MAX_TERM=max(history_df["term"])
-N_TERMS=MAX_TERM-MIN_TERM+1
-
+MIN_TERM=111
+N_TERMS = 9
 alpha=2/3
-def create_bill_vectors(bills):
+def create_bill_vectors_unscaled(bill_df):
   out=[]
   predecessors_buckets=np.zeros(len(common_bucket_names))
   predecessor_buckets=np.zeros(len(common_bucket_names))
@@ -65,7 +31,7 @@ def create_bill_vectors(bills):
   predecessor_extra_buckets=np.zeros(len(common_extra_bucket_names))
   curr_bucket = np.zeros(len(common_bucket_names))
   curr_extra_buckets = np.zeros(len(common_extra_bucket_names))
-  for i,row in bills.iterrows():
+  for i,row in bill_df.iterrows():
     prev_bucket=np.array(curr_bucket)
     prev_extra_buckets=np.array(curr_extra_buckets)
     curr_bucket = np.zeros(len(common_bucket_names))
@@ -105,11 +71,18 @@ def concat(ls):
   return out
 
 
-data = pd.DataFrame(concat(create_bill_vectors(bill) for bill in bills.values()))
+bills = pd.read_csv("outputs/data/train_data.csv").groupby("bill_id")
+data = pd.DataFrame(concat(create_bill_vectors_unscaled(bill) for i,bill in bills))
 preds_buckets = np.stack(data["predecessors_buckets"],axis=0)
 preds_extra_buckets = np.stack(data["predecessors_extra_buckets"],axis=0)
 scaler_preds_buckets = sklearn.preprocessing.StandardScaler().fit(preds_buckets)
 scaler_preds_extra_buckets = sklearn.preprocessing.StandardScaler().fit(preds_extra_buckets)
+def create_bill_vectors(bill):
+  dicts = create_bill_vectors_unscaled(bill)
+  for d in dicts:
+    dicts["predecessors_buckets"] = scaler_preds_buckets.transform(dicts["predecessors_buckets"])[0]
+    dicts["predecessors_extra_buckets"] = scaler_preds_buckets.transform(dicts["predecessors_extra_buckets"])[0]
+  
 preds_buckets_scaled=scaler_preds_buckets.transform(preds_buckets)
 preds_extra_buckets_scaled=scaler_preds_extra_buckets.transform(preds_extra_buckets)
 
@@ -123,8 +96,7 @@ np.load("outputs/prediction_vecs_08-07.npz",allow_pickle=True)["arr_0"][0]
 
 
 class ActionDataset(torch.utils.data.Dataset):
-  def __init__(self,path):
-    data = np.load(path,allow_pickle=True)["arr_0"]
+  def __init__(self,data):
     self.inputs = [np.concatenate([entry["predecessor_buckets"],entry["predecessors_buckets"],entry["predecessor_extra_buckets"],entry["predecessors_extra_buckets"],entry["term"],entry["chamber"]]) for entry in data]
     # self.inputs = sklearn.preprocessing.StandardScaler().fit_transform(self.inputs)
     self.outputs = [np.concatenate((entry["output_bucket"],entry["output_extra_buckets"])) for entry in data]
@@ -133,8 +105,9 @@ class ActionDataset(torch.utils.data.Dataset):
   def __getitem__(self,idx):
     return self.inputs[idx],self.outputs[idx]
 
-ds = ActionDataset("outputs/prediction_vecs_08-07.npz")
-train_dataset,test_dataset,val_dataset = torch.utils.data.random_split(ds,[0.6,0.2,0.2])
+ds = ActionDataset(np.load("outputs/prediction_vecs_08-07.npz",allow_pickle=True)["arr_0"])
+train_dataset,val_dataset = torch.utils.data.random_split(ds,[0.8,0.2])
+
 
 def train_model(lr=1e-4,lasso_weight=1e-7,batch_size=32,extra_pred_weight=1,continue_from=None,special_name="",override_previous=False,end_epoch=301,n_epochs=None):
   hyperparams={"lr":lr,"lasso_weight":lasso_weight,"batch size":batch_size,"extra_pred_weight":extra_pred_weight}
