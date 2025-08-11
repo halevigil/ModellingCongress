@@ -42,11 +42,12 @@ def create_bill_vectors_unscaled(bill_df):
       output_bucket[common_bucket_names_inv[row.bucket]]=1
     else:
       output_bucket[-1]=1
-    for extra_bucket in row["extra_buckets"]: 
-      if extra_bucket in common_extra_bucket_names_inv:
-        curr_extra_buckets[common_extra_bucket_names_inv[extra_bucket]]=1
+    if row["extra_buckets"]:
+      for extra_bucket in row["extra_buckets"]: 
+        if extra_bucket in common_extra_bucket_names_inv:
+          curr_extra_buckets[common_extra_bucket_names_inv[extra_bucket]]=1
     
-    predecessor_buckets=(1-alpha)*predecessor_buckets+alpha*np.array(prev_bucket)
+    predecessor_buckets=(1-alpha)*np.array(predecessor_buckets)+alpha*np.array(prev_bucket)
     predecessors_buckets=np.array(predecessors_buckets)+prev_bucket
   
 
@@ -58,7 +59,8 @@ def create_bill_vectors_unscaled(bill_df):
     elif row["chamber"]=="Senate":
       chamber[1]=1
     term=np.zeros(N_TERMS)
-    term[row.term-MIN_TERM]=1
+    if row["term"]:
+      term[row["term"]-MIN_TERM]=1
     entry={"predecessor_buckets":predecessor_buckets,"predecessors_buckets":predecessors_buckets,"predecessor_extra_buckets":predecessor_extra_buckets,"predecessors_extra_buckets":predecessors_extra_buckets,"term":term,"chamber":chamber,
           "output_bucket":output_bucket,"output_extra_buckets":curr_extra_buckets} # print(entry)
     out.append(entry)
@@ -78,11 +80,11 @@ preds_extra_buckets = np.stack(data["predecessors_extra_buckets"],axis=0)
 scaler_preds_buckets = sklearn.preprocessing.StandardScaler().fit(preds_buckets)
 scaler_preds_extra_buckets = sklearn.preprocessing.StandardScaler().fit(preds_extra_buckets)
 def create_bill_vectors(bill):
-  dicts = create_bill_vectors_unscaled(bill)
-  for d in dicts:
-    dicts["predecessors_buckets"] = scaler_preds_buckets.transform(dicts["predecessors_buckets"])[0]
-    dicts["predecessors_extra_buckets"] = scaler_preds_buckets.transform(dicts["predecessors_extra_buckets"])[0]
-  
+  out = create_bill_vectors_unscaled(bill)
+  for d in out:
+    d["predecessors_buckets"] = scaler_preds_buckets.transform([d["predecessors_buckets"]])[0]
+    d["predecessors_extra_buckets"] = scaler_preds_extra_buckets.transform([d["predecessors_extra_buckets"]])[0]
+  return out
 preds_buckets_scaled=scaler_preds_buckets.transform(preds_buckets)
 preds_extra_buckets_scaled=scaler_preds_extra_buckets.transform(preds_extra_buckets)
 

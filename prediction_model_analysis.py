@@ -97,7 +97,7 @@ predecessor_plus_s_chains=[]
 predecessor_s_diff_chains=[]
 term_chains=[]
 common_extra_bucket_names_prefixed=["Extra Bucket: "+x for x in common_extra_bucket_names]
-output_buckets = common_bucket_names+["No Bucket"]+common_extra_bucket_names_prefixed
+output_buckets = common_bucket_names+["Miscellaneous"]+common_extra_bucket_names_prefixed
 for i,bucket1 in itertools.chain(enumerate(common_bucket_names),enumerate(common_extra_bucket_names_prefixed,2*len(common_bucket_names))):
   for j,bucket2 in enumerate(output_buckets):
     # print(i)
