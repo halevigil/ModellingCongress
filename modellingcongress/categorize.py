@@ -1,8 +1,13 @@
+# Every action belongs to exactly 1 generic
+# These categories are extra classifications that 
+# subsume generics and are not mutually exclusive
+
 from collections import defaultdict
 import re
 import pandas as pd
 import json
-def extra_buckets_map(action):
+# maps an action to the categories it belongs to
+def categorize(action):
   out=[]
   regexes={r"^All points of consideration against consideration.*? are waived",\
          r"^ANNOUNCEMENT",r"^APPOINTMENT OF CONFEREE",r"^APPOINTMENT OF.*? CONFEREE",\
@@ -76,16 +81,17 @@ def extra_buckets_map(action):
       out.append(regex)
   return out
 
-def make_extra_buckets(actions,f):
-  buckets=defaultdict(list)
+# Makes categories out of these actionsre 
+def make_categories(actions,f):
+  categories=defaultdict(list)
   for action in actions:
-    for bucket in f(action):
-      buckets[bucket].append(action)
-  return dict(buckets)
+    for category in f(action):
+      categories[category].append(action)
+  return dict(categories)
 if __name__=="__main__":  
-  datasets = [f"data/US/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
+  datasets = [f"data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
   history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
   actions = list(history_df["action"])
-  extra_buckets = make_extra_buckets(actions,extra_buckets_map)
-  with open("outputs/extra_buckets.json","w") as file:
-    json.dump(extra_buckets,file)
+  categories = make_categories(actions,categorize)
+  with open("../outputs/categories.json","w") as file:
+    json.dump(categories,file)

@@ -2,11 +2,11 @@ import pandas as pd
 import re
 import json
 import numpy as np
-import bucketing_fn
+import modellingcongress.genericing_util as genericing_util
 
 # Extract all committee spellings
 
-bills_datasets = [f"data/US/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/bills.csv" for term in range(111,120)]
+bills_datasets = [f"data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/bills.csv" for term in range(111,120)]
 bills_df=pd.concat([pd.read_csv(dataset) for dataset in bills_datasets])
 committees=[committee for committee in set(bills_df["committee"]) if type(committee)==str and committee !=" " and committee!=""]
 committee_search_item={}
@@ -127,7 +127,8 @@ def similar_after_processing(action1,action2,threshold):
       return False
   return edit_distance_below(action1,action2,threshold*max(len(action1),len(action2)))
 
-def special_buckets_f(action):
+# special generic function, certain actions that belong together but are not automatically genericed as such
+def special_generics_f(action):
   if re.search(r"^h\.amdt\.[0-9]*? amendment \(.*?\) in the nature of a substitute offered by",action.lower()):
     return "H.Amdt. in the nature of a substitute offered by"
   if re.search(r"^h\.amdt\.[0-9]*? amendment \(.*?\) offered by",action.lower()):
@@ -141,19 +142,19 @@ def special_buckets_f(action):
 if __name__=="__main__":
   committee_spellings,committee_search_item=all_committee_spellings(committees)
   # Map each action to the committees it is in
-  datasets = [f"data/US/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
+  datasets = [f"data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
   history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
   actions = list(history_df["action"])
 
   # returns a map from action to the committee it is in
   action_committees_map=get_action_committee_map(actions,committee_search_item)
-  json.dump(action_committees_map,open("./outputs/action_committees_map.json","w"),indent=2)
-  action_committees_map = json.load(open("./outputs/action_committees_map.json","r"))
+  json.dump(action_committees_map,open("./../outputs/action_committees_map.json","w"),indent=2)
+  action_committees_map = json.load(open("./../outputs/action_committees_map.json","r"))
 
 
-  buckets = bucketing_fn.bucket(actions,similar_after_processing,special_buckets_f)
-  with open("outputs/buckets.json","w") as file:
-    json.dump(buckets,file)
+  generics = genericing_util.generic(actions,similar_after_processing,special_generics_f)
+  with open("../outputs/generics.json","w") as file:
+    json.dump(generics,file)
 
 
 

@@ -1,6 +1,9 @@
 data
 .env
 .ipynb_checkpoints/
-outputs
+outputs/*
 example_refinements.txt
 *.pyc
+modellingcongress/embedding.py
+.pytest_cache
+.vscode

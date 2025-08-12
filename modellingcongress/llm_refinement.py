@@ -1,5 +1,5 @@
 
-# Prepare batch to come up with names for each bucket
+# Prepare batch to come up with names for each generic
 import random
 import numpy as np
 import json
@@ -11,7 +11,7 @@ import openai
 import time
 
 
-def llm_input(bucket_names):
+def llm_input(generic_names):
   return f"""I am analyzing a dataset full of Congressional actions. I want to refine each action to clean them up and remove the names and descriptions of congresspeople, bills, amendments, times, votes, rules and committees.
 Some notes to help you: 
 H.R. and S. are bills. H.Res., S.Res. and H./S.Con.Res are resolutions. Amdt. are amendments.
@@ -119,20 +119,20 @@ Action: ORDER OF PROCEDURE - Mr. Diaz-Balart asked unanimous consent for an addi
 Action: ORDER OF PROCEDURE - [REPRESENTATIVE] asked unanimous consent for an additional [TIME] of debate on each side of the aisle. Agreed to without objection.
 
 Now, please come up with a refinement for the following actions. Please only give me the refinements, one per line in the same order as given in, nothing else in your response. If there is just one action, just give me the refinement for that action:
-{"\n".join(bucket_names)}"""
+{"\n".join(generic_names)}"""
 
 def main():
   BATCH_SIZE = 200
-  bucket_names_batches = np.array_split(bucket_names, range(BATCH_SIZE, len(bucket_names), BATCH_SIZE))
+  generic_names_batches = np.array_split(generic_names, range(BATCH_SIZE, len(generic_names), BATCH_SIZE))
   action_i=0
-  for batch_i,batch in enumerate(bucket_names_batches):
+  for batch_i,batch in enumerate(generic_names_batches):
     input_len=0
-    with open(f"./outputs/llm_refinement/07-29_charsim17/input/batch{batch_i}.jsonl","w") as file:
-      for bucket_i in range(0,len(batch),5):
-        names=bucket_names[bucket_i:bucket_i+5]
+    with open(f"./../outputs/llm_refinement/07-29_charsim17/input/batch{batch_i}.jsonl","w") as file:
+      for generic_i in range(0,len(batch),5):
+        names=generic_names[generic_i:generic_i+5]
         input=llm_input(names)
         input_len+=len(input)
-        json.dump({"custom_id":"bucket"+str(action_i),"url":"/v1/responses","method":"POST","body":{"input":input,"model":"gpt-4.1-mini"}}, file)
+        json.dump({"custom_id":"generic"+str(action_i),"url":"/v1/responses","method":"POST","body":{"input":input,"model":"gpt-4.1-mini"}}, file)
         file.write("\n")
         action_i+=1
 
@@ -142,13 +142,13 @@ def main():
   client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
 
 
-  for batch_i in range(len(bucket_names_batches)):
+  for batch_i in range(len(generic_names_batches)):
     statuses=[batch.status for batch in client.batches.list()]
     while "cancelling" in statuses or "in_progress" in statuses or "finalizing" in statuses:
       print("waiting before starting batch... ")
       time.sleep(30)
       statuses=[batch.status for batch in client.batches.list()]
-    with open(f"./outputs/llm_refinement/07-29_charsim17/input/batch{batch_i}.jsonl","rb") as file:
+    with open(f"./../outputs/llm_refinement/07-29_charsim17/input/batch{batch_i}.jsonl","rb") as file:
       batch_file=client.files.create(file=file,purpose="batch")
     batch=client.batches.create(input_file_id=batch_file.id,endpoint="/v1/responses",completion_window="24h")
     print(batch.id)
@@ -161,7 +161,7 @@ def main():
       time.sleep(20)
     if failed:
       break
-    with open(f"./outputs/llm_refinement/07-29_charsim17/output/batch{batch_i}.jsonl","w") as file:
+    with open(f"./../outputs/llm_refinement/07-29_charsim17/output/batch{batch_i}.jsonl","w") as file:
       file.write(client.files.content(file_id=client.batches.retrieve(batch_id=batch.id).output_file_id).text)
     print(f"finished batch {batch_i}")
     time.sleep(180)
