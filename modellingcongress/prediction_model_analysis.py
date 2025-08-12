@@ -8,8 +8,8 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import sklearn
 from collections import defaultdict, Counter
-with open("../outputs/generics_08-04_manual-llm-manual.json","r") as file:
-  generics = json.load(file)
+with open("../outputs/generics_dict_08-04_manual-llm-manual.json","r") as file:
+  generics_dict = json.load(file)
 with open("../outputs/categories_08-04.json","r") as file:
   categories = json.load(file)
 
@@ -24,8 +24,8 @@ history_df=pd.concat(history_df_by_term)
 
 
 generic_map={}
-for name in generics:
-  for action in generics[name]:
+for name in generics_dict:
+  for action in generics_dict[name]:
     generic_map[action]=name
 category_map=defaultdict(list)
 n_read_twice=0
@@ -70,13 +70,13 @@ N_TERMS=MAX_TERM-MIN_TERM+1
 class ActionDataset(Dataset):
   def __init__(self,path):
     data = np.load(path,allow_pickle=True)["arr_0"]
-    self.inputs = [np.concatenate([entry["predecessor_generics"],entry["predecessors_generics"],entry["predecessor_categories"],entry["predecessors_categories"],entry["term"],entry["chamber"]]) for entry in data]
+    self.inputs = [np.concatenate([entry["recent_generics"],entry["cum_prev_generics"],entry["recent_categories"],entry["cum_prev_categories"],entry["term"],entry["chamber"]]) for entry in data]
     self.inputs = sklearn.preprocessing.StandardScaler().fit_transform(self.inputs)
-    self.../outputs/ = [np.concatenate((entry["output_generic"],entry["output_categories"])) for entry in data]
+    self.outputs = [np.concatenate((entry["output_generic"],entry["output_categories"])) for entry in data]
   def __len__(self):
     return len(self.inputs)
   def __getitem__(self,idx):
-    return self.inputs[idx],self.../outputs/[idx]
+    return self.inputs[idx],self.outputs[idx]
 
 ds = ActionDataset("../outputs/prediction_vecs_08-04_withextras.npz")
 # print(len(ds))
@@ -91,10 +91,10 @@ model = torch.nn.Linear(len(common_generic_names)*2+len(common_category_names)*2
 model.load_state_dict(torch.load("../outputs/models/08-07_lr3e-04_lassoweight1e-05_batch256_extra/epoch160.pt")["model"])
 
 weights = model.weight.detach().numpy() 
-predecessor_chains=[]
-predecessors_chains=[]
-predecessor_plus_s_chains=[]
-predecessor_s_diff_chains=[]
+recent_chains=[]
+cum_prev_chains=[]
+recent_plus_s_chains=[]
+recent_s_diff_chains=[]
 term_chains=[]
 common_category_names_prefixed=["Extra generic: "+x for x in common_category_names]
 output_generics = common_generic_names+["Miscellaneous"]+common_category_names_prefixed
@@ -103,10 +103,10 @@ for i,generic1 in itertools.chain(enumerate(common_generic_names),enumerate(comm
     # print(i)
     pred_weight = float(weights[j][i])
     preds_weight = float(weights[j][i+len(common_generic_names) if i<len(common_generic_names) else i+len(common_category_names)])
-    predecessor_chains.append((pred_weight,generic1,generic2))
-    predecessors_chains.append((preds_weight,generic1,generic2))
-    predecessor_s_diff_chains.append((abs(pred_weight-preds_weight)*(pred_weight+preds_weight),generic1,generic2))
-    predecessor_plus_s_chains.append(((pred_weight+preds_weight),generic1,generic2))
+    recent_chains.append((pred_weight,generic1,generic2))
+    cum_prev_chains.append((preds_weight,generic1,generic2))
+    recent_s_diff_chains.append((abs(pred_weight-preds_weight)*(pred_weight+preds_weight),generic1,generic2))
+    recent_plus_s_chains.append(((pred_weight+preds_weight),generic1,generic2))
 for term in range(N_TERMS):
   for j,generic2 in enumerate(output_generics):
     term_chains.append((float(weights[j][term+2*len(common_generic_names)+2*len(common_category_names)]),str(term*2+2009)+"-"+str(term*2+2010),generic2))
@@ -115,7 +115,7 @@ for j,generic in enumerate(output_generics):
     chamber_chains.append((float(weights[j][1+term+2*len(common_generic_names)+2*len(common_category_names)]),"House",generic))
 for j,generic in enumerate(output_generics):
     chamber_chains.append((float(weights[j][2+term+2*len(common_generic_names)+2*len(common_category_names)]),"Senate",generic))
-all_chains = predecessor_chains+predecessors_chains+term_chains+chamber_chains
+all_chains = recent_chains+cum_prev_chains+term_chains+chamber_chains
 
 def display_chains(chains,name=""):
   remove_negative_selfchains=[x for x in chains if x[1]!=x[2] or x[0]>0]
@@ -125,11 +125,11 @@ def display_chains(chains,name=""):
   display([str(param[0])+" "+param[1]+" -> "+param[2] for param in top100])
   display(sum(x[0] for x in sorted(chains,key=lambda x: abs(x[0]),reverse=True)[-10:])/10)
 if __name__=="__main__":
-  display_chains(predecessor_s_diff_chains,"all chains:")
-  display_chains(predecessor_s_diff_chains,"diffs:")
-  display_chains(predecessor_plus_s_chains,"predecessor+predecessors:")
-  display_chains(predecessor_chains,"predecessor:")
-  display_chains(predecessors_chains,"predecessors:")
+  display_chains(recent_s_diff_chains,"all chains:")
+  display_chains(recent_s_diff_chains,"diffs:")
+  display_chains(recent_plus_s_chains,"recent+cum_prev:")
+  display_chains(recent_chains,"recent:")
+  display_chains(cum_prev_chains,"cum_prev:")
 
   display_chains(term_chains,"terms:")
   display_chains(chamber_chains,"chamber:")

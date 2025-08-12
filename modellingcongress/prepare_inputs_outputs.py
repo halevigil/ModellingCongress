@@ -2,63 +2,56 @@ import numpy as np
 import json
 import pandas as pd
 import sklearn
+import argparse
+import os
 
+parser = argparse.ArgumentParser(description="prepares input and output vectors for the prediction model")
+parser.add_argument("-d","--preprocessing_dir",type=str,default="../outputs/preprocess0.json")
 
-with open("../outputs/generics_08-04_manual-llm-manual.json","r") as file:
-  generics = json.load(file)
-with open("../outputs/categories_08-04.json","r") as file:
-  categories = json.load(file)
-common_generic_names = [name for name in generics if len(generics[name])>=10]
-common_category_names = [name for name in categories if len(categories[name])>=10]
-with open("../outputs/common_generic_names.json","w") as file:
-  json.dump(common_generic_names,file)
-with open("../outputs/common_category_names.json","w") as file:
-  json.dump(common_category_names,file)
-with open("../outputs/common_generic_names.json","r") as file:
-  common_generic_names = json.load(file)
-with open("../outputs/common_category_names.json","r") as file:
-  common_category_names = json.load(file)
-common_generic_names_inv = {name:i for i,name in enumerate(common_generic_names)}
-common_category_names_inv = {name:i for i,name in enumerate(common_generic_names)}
+args,unknown = parser.parse_known_args()
+
 
 MIN_TERM=111
 N_TERMS = 9
 alpha=2/3
 
 # creates vectors outto use as input and output of the model from a certain bill
-# predecessor is an exponentially weighted moving average of the one-hot
+# recent is an exponentially weighted moving average of the one-hot
 # vector representing the previous generic
-# predecessors is a sum of all one-hot vectors representing previous actions 
-def create_vectors_bill(bill_df):
-  out=[]
-  predecessors_generics=np.zeros(len(common_generic_names))
-  predecessor_generics=np.zeros(len(common_generic_names))
-  predecessors_categories=np.zeros(len(common_category_names))
-  predecessor_categories=np.zeros(len(common_category_names))
-  curr_generic = np.zeros(len(common_generic_names))
-  curr_categories = np.zeros(len(common_category_names))
+# cum_prev is a sum of all one-hot vectors representing previous actions 
+def create_vectors_bill(bill_df,common_generics,common_categories):
+  common_generics_inv = {name:i for i,name in enumerate(common_generics)}
+  common_categories_inv = {name:i for i,name in enumerate(common_generics)}
+
+  out=pd.DataFrame(columns=["recent_generics","cum_prev_generics","recent_categories","cum_prev_categories","output_generic","output_categories"])
+  cum_prev_generics=np.zeros(len(common_generics))
+  recent_generics=np.zeros(len(common_generics))
+  cum_prev_categories=np.zeros(len(common_categories))
+  recent_categories=np.zeros(len(common_categories))
+  curr_generic = np.zeros(len(common_generics))
+  curr_categories = np.zeros(len(common_categories))
   for i,row in bill_df.iterrows():
     prev_generic=np.array(curr_generic)
     prev_categories=np.array(curr_categories)
-    curr_generic = np.zeros(len(common_generic_names))
-    curr_categories = np.zeros(len(common_category_names))
-    output_generic = np.zeros(len(common_generic_names)+1)
-    if row["generic"] in common_generic_names_inv:
-      curr_generic[common_generic_names_inv[row.generic]]=1
-      output_generic[common_generic_names_inv[row.generic]]=1
+    curr_generic = np.zeros(len(common_generics))
+    curr_categories = np.zeros(len(common_generics))
+    output_generic = np.zeros(len(common_generics)+1)
+    if row["generic"] in common_generics_inv:
+      curr_generic[common_generics_inv[row.generic]]=1
+      output_generic[common_generics_inv[row.generic]]=1
     else:
       output_generic[-1]=1
     if row["categories"]:
       for category in row["categories"]: 
-        if category in common_category_names_inv:
-          curr_categories[common_category_names_inv[category]]=1
+        if category in common_categories_inv:
+          curr_categories[common_categories_inv[category]]=1
     
-    predecessor_generics=(1-alpha)*np.array(predecessor_generics)+alpha*np.array(prev_generic)
-    predecessors_generics=np.array(predecessors_generics)+prev_generic
+    recent_generics=(1-alpha)*np.array(recent_generics)+alpha*np.array(prev_generic)
+    cum_prev_generics=np.array(cum_prev_generics)+prev_generic
   
 
-    predecessor_categories=(1-alpha)*predecessor_categories+alpha*np.array(prev_categories)
-    predecessors_categories=np.array(predecessors_categories)+prev_categories
+    recent_categories=(1-alpha)*recent_categories+alpha*np.array(prev_categories)
+    cum_prev_categories=np.array(cum_prev_categories)+prev_categories
     chamber = np.zeros(2)
     if row["chamber"]=="House":
       chamber[0]=1
@@ -67,9 +60,7 @@ def create_vectors_bill(bill_df):
     term=np.zeros(N_TERMS)
     if row["term"]:
       term[row["term"]-MIN_TERM]=1
-    entry={"predecessor_generics":predecessor_generics,"predecessors_generics":predecessors_generics,"predecessor_categories":predecessor_categories,"predecessors_categories":predecessors_categories,"term":term,"chamber":chamber,
-          "output_generic":output_generic,"output_categories":curr_categories} # print(entry)
-    out.append(entry)
+    out.loc[-1]=[recent_generics,cum_prev_generics,recent_categories,cum_prev_categories,term,chamber,output_generic,curr_categories]
   return out
 # concatenate a list of lists
 def concat(ls):
@@ -77,26 +68,47 @@ def concat(ls):
   for l in ls:
     out+=l
   return out
-bills = pd.read_csv("../outputs/data/train_data.csv").groupby("bill_id")
-data = pd.DataFrame(concat(create_bill_vectors(bill) for i,bill in bills))
-preds_generics = np.stack(data["predecessors_generics"],axis=0)
-preds_categories = np.stack(data["predecessors_categories"],axis=0)
-scaler_preds_generics = sklearn.preprocessing.StandardScaler().fit(preds_generics)
-scaler_preds_categories = sklearn.preprocessing.StandardScaler().fit(preds_categories)
+# Normalize the cum_prev axes to mean=0 std=0.5
+# so that coefficients are of similar size to recent
+# inplace and also return updated vectors
+def normalize(to_normalize,all_data):
+  scaler_preds_generics = sklearn.preprocessing.StandardScaler().fit(all_data["cum_prev_generics"])
+  scaler_preds_categories = sklearn.preprocessing.StandardScaler().fit(all_data["cum_prev_categories"])
 
-# creates bill vectors but with the predecessors axes normalized
-# so that coefficients are of similar size to predecessor
+  to_normalize["cum_prev_generics"] = scaler_preds_generics.transform(to_normalize["cum_prev_generics"])
+  to_normalize["cum_prev_categories"] = scaler_preds_categories.transform([to_normalize["cum_prev_categories"]])[0]
+  return to_normalize
+# creates bill vectors with cum_prev normalized
 def create_vectors_bill_normalized(bill):
   out = create_vectors_bill(bill)
-  for d in out:
-    d["predecessors_generics"] = scaler_preds_generics.transform([d["predecessors_generics"]])[0]
-    d["predecessors_categories"] = scaler_preds_categories.transform([d["predecessors_categories"]])[0]
+  normalize(out)
   return out
 
-
 if __name__=="__main__":
-  # manually scale the existing vectors so you don't have to recalculate all the vectors
-  data["predecessors_generics"]=scaler_preds_generics.transform(preds_generics)
-  data["predecessors_categories"]=scaler_preds_categories.transform(preds_categories)
-  with open("../outputs/prediction_vecs","wb") as file:
+  with open(os.path.join(args.preprocessing_dir,"generics_dict_manual-llm-manual.json"),"r") as file:
+    generics_dict = json.load(file)
+  with open(os.path.join(args.preprocessing_dir,"categories_dict.json"),"r") as file:
+    categories_dict = json.load(file)
+  common_generics = [generic for generic in generics_dict if len(generics_dict[generic])>=100]
+  common_categories = [category for category in categories_dict if len(categories_dict[category])>=100]
+  with open(os.path.join(args.preprocessing_dir,"common_generics.json"),"w") as file:
+    json.dump(common_generics,file)
+  with open(os.path.join(args.preprocessing_dir,"common_categories.json"),"w") as file:
+    json.dump(common_categories,file)
+
+
+  bills = pd.read_csv(os.path.join(args.d,"all_data.csv")).groupby("bill_id")
+  data = pd.DataFrame(concat(create_vectors_bill(bill) for i,bill in bills))
+  with open(os.path.join(args.d,"all_vectors_unnormalized.pkl"),"wb") as file:
     data.to_pickle(file)
+  
+  train_bills = pd.read_csv(os.path.join(args.d,"train_data.csv")).groupby("bill_id")
+  train_data = pd.DataFrame(concat(create_vectors_bill_normalized(bill,data) for i,bill in train_bills))
+  with open(os.path.join(args.d,"train_vectors.pkl"),"wb") as file:
+    data.to_pickle(file)
+  
+  test_bills = pd.read_csv(os.path.join(args.d,"test_data.csv")).groupby("bill_id")
+  test_data = pd.DataFrame(concat(create_vectors_bill_normalized(bill,data) for i,bill in train_bills))
+  with open(os.path.join(args.d,"test_vectors.pkl"),"wb") as file:
+    data.to_pickle(file)
+  

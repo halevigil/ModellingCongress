@@ -7,3 +7,4 @@ example_refinements.txt
 modellingcongress/embedding.py
 .pytest_cache
 .vscode
+__pycache__

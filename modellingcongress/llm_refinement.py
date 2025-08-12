@@ -9,6 +9,7 @@ import shutil
 import dotenv
 import openai
 import time
+import argparse
 
 
 def llm_input(generic_names):
@@ -121,34 +122,43 @@ Action: ORDER OF PROCEDURE - [REPRESENTATIVE] asked unanimous consent for an add
 Now, please come up with a refinement for the following actions. Please only give me the refinements, one per line in the same order as given in, nothing else in your response. If there is just one action, just give me the refinement for that action:
 {"\n".join(generic_names)}"""
 
-def main():
+
+
+# Creates the batches for llm refinement
+# Returns paths to the created batches
+def create_batches(actions,batch_folder,batch_size):
   BATCH_SIZE = 200
-  generic_names_batches = np.array_split(generic_names, range(BATCH_SIZE, len(generic_names), BATCH_SIZE))
+  generics_batches = np.array_split(actions, range(batch_size, len(actions), BATCH_SIZE))
   action_i=0
-  for batch_i,batch in enumerate(generic_names_batches):
+  paths=[]
+  input_folder = os.path.join(batch_folder,"input")
+  if not os.path.exists(input_folder):
+    os.mkdir(input_folder)
+  for batch_i,batch in enumerate(generics_batches):
     input_len=0
-    with open(f"./../outputs/llm_refinement/07-29_charsim17/input/batch{batch_i}.jsonl","w") as file:
+    batch_path=os.path.join(input_folder,"batch{batch_i}")
+    with open(batch_path,"w") as file:
       for generic_i in range(0,len(batch),5):
-        names=generic_names[generic_i:generic_i+5]
+        names=generics_dict[generic_i:generic_i+5]
         input=llm_input(names)
         input_len+=len(input)
         json.dump({"custom_id":"generic"+str(action_i),"url":"/v1/responses","method":"POST","body":{"input":input,"model":"gpt-4.1-mini"}}, file)
         file.write("\n")
         action_i+=1
-
-
-
+    paths.append(batch_path)
   dotenv.load_dotenv()
+  return paths
+
+def run_batches(input_paths,output_dir):
   client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
 
-
-  for batch_i in range(len(generic_names_batches)):
+  for batch_i,path in enumerate(input_paths):
     statuses=[batch.status for batch in client.batches.list()]
     while "cancelling" in statuses or "in_progress" in statuses or "finalizing" in statuses:
       print("waiting before starting batch... ")
       time.sleep(30)
       statuses=[batch.status for batch in client.batches.list()]
-    with open(f"./../outputs/llm_refinement/07-29_charsim17/input/batch{batch_i}.jsonl","rb") as file:
+    with open(path,"rb") as file:
       batch_file=client.files.create(file=file,purpose="batch")
     batch=client.batches.create(input_file_id=batch_file.id,endpoint="/v1/responses",completion_window="24h")
     print(batch.id)
@@ -161,11 +171,21 @@ def main():
       time.sleep(20)
     if failed:
       break
-    with open(f"./../outputs/llm_refinement/07-29_charsim17/output/batch{batch_i}.jsonl","w") as file:
+    with open(os.path.join(output_dir,"batch{batch_i}.jsonl"),"w") as file:
       file.write(client.files.content(file_id=client.batches.retrieve(batch_id=batch.id).output_file_id).text)
     print(f"finished batch {batch_i}")
     time.sleep(180)
 
 if __name__=="__main__":
-  main()
-  
+  parser = argparse.ArgumentParser(description="uses llm to refine manual generics")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="../outputs/preprocess0.json")
+  parser.add_argument("--batch_size",type=int,default=200)
+
+
+  args,unknown = parser.parse_known_args()
+  if not os.path.exists(os.path.join(args.d,"llm_refinement")):
+    os.mkdir(os.path.join(args.d,"llm_refinement"))
+  with open(os.path.join(args.d,"generics_dict_manual.json"),"r") as file:
+    generics_dict = json.load(file)
+  paths = create_batches(list(generics_dict.keys()),os.path.join(args.d,"llm_refinement"))
+  run_batches(paths)

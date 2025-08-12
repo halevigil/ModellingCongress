@@ -7,9 +7,7 @@ import re
 import pandas as pd
 import json
 # maps an action to the categories it belongs to
-def categorize(action):
-  out=[]
-  regexes={r"^All points of consideration against consideration.*? are waived",\
+regexes={r"^All points of consideration against consideration.*? are waived",\
          r"^ANNOUNCEMENT",r"^APPOINTMENT OF CONFEREE",r"^APPOINTMENT OF.*? CONFEREE",\
           r"^forwarded by subcommittee to full committee",r"^GENERAL DEBATE",r"^Introduced in the Senate",\
           r"^MOMENT OF SILENCE",r"^Motion by \[SENATOR\] to (commit|refer) to",r"^Motion (by \[SENATOR\] )?to concur",\
@@ -57,7 +55,7 @@ def categorize(action):
             r"The (resolution|rule) provides that an amendment.*? shall be considered as an original bill",
             r"^UNANIMOUS CONSENT",r"^UNFINISHED BUSINESS","60 votes", "five.minute rule",
             r"Upon reconsideration,.*? cloture",r"^VACATING DEMAND",r"^VACATING PROCEEDINGS",r"^Veto message",r"^WORDS TAKEN DOWN",
-            r"Without objection, the Chair laid",r"point of order",r"\[amendment agreed to in Senate\]",r"\[amendment.*? modified]",
+            r"Without objection, the Chair laid",r"points? of order",r"\[amendment agreed to in Senate\]",r"\[amendment.*? modified]",
             r"amendments? offered by",r"amendment.*?\b\w+\b(?<!\bnot) agreed to",r"amendment.*? not agreed to",r"\[AMENDMENT\].*? failed",
             r"\[AMENDMENT\] fell",
             r"\[AMENDMENT\].*? withdrawn",r"\[AMENDMENT\] modified",r"\[AMENDMENT\] motion.*? to reconsider the vote",
@@ -76,6 +74,9 @@ def categorize(action):
             "withdrawn","Rule",r"print","conference report",
             "committee","unanimous consent","voice vote","cloture","closed rule","pursuant to",
             "unfinished","in the nature of a substitute","waive"}
+
+def categorize(action):
+  out=[]
   for regex in regexes:
     if re.search(regex,action.lower() if regex.islower() else action):
       out.append(regex)
@@ -89,7 +90,7 @@ def make_categories(actions,f):
       categories[category].append(action)
   return dict(categories)
 if __name__=="__main__":  
-  datasets = [f"data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
+  datasets = [f"../data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
   history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
   actions = list(history_df["action"])
   categories = make_categories(actions,categorize)

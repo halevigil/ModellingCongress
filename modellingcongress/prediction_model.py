@@ -16,10 +16,10 @@ import sklearn
 
 class ActionDataset(torch.utils.data.Dataset):
   def __init__(self,df):
-    self.inputs = [np.concatenate([arr1, arr2,arr3,arr4]) for arr1, arr2, arr3, arr4 in zip(df['predecessor_generics'], df['predecessors_generics'],df["predecessor_categories"],df["predecessors_categories"],df["term"],df["chamber"])]
+    self.inputs = [np.concatenate([arr1, arr2,arr3,arr4]) for arr1, arr2, arr3, arr4 in zip(df['recent_generics'], df['cum_prev_generics'],df["recent_categories"],df["cum_prev_categories"],df["term"],df["chamber"])]
     self.outputs = [np.concatenate([arr1, arr2]) for arr1, arr2 in zip(df['output_generic'], df['output_categories'])]
-    self.REGULAR_genericS_LEN = len(df.at([0,"predecessor_generics"]))
-    self.categories_LEN = len(df.at([0,"predecessor_categories"]))
+    self.REGULAR_genericS_LEN = len(df.at([0,"recent_generics"]))
+    self.categories_LEN = len(df.at([0,"recent_categories"]))
   def input_len(self):
      return len(self.inputs[0])
   def output_len(self):

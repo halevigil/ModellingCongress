@@ -5,10 +5,9 @@ from torch.nn.functional import softmax,sigmoid
 import json
 import dotenv
 import openai
-import prediction_model
-from llm_refine_generic_names import llm_input
+from llm_refinement import llm_input
 from prediction_model import create_bill_vectors,ActionDataset
-from manual_genericing import edit_distance_below
+from make_generics import edit_distance_below
 import openai
 import numpy as np
 import os
@@ -17,7 +16,7 @@ from categorying import categories_map
 
 
 client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
-with open("../outputs/generics_08-04_manual-llm-manual.json") as file:
+with open("../outputs/generics_dict_08-04_manual-llm-manual.json") as file:
   generics = json.load(file)
 
 def refine_actions(actions):
@@ -82,7 +81,7 @@ def predict_bill(bill_df,refine_first=True):
       pred_generics = sorted([(p/(1-p_misc),b) for p,b in zip(pred[:len(common_generic_names)],common_generic_names)],reverse=True)
       pred_categories = sorted([(p,b) for p,b in zip(pred[len(common_category_names)+1:],common_category_names)],reverse=True)
       p_real_action=[p for p,b in pred_generics if b==bill_df.iloc[i]["generic"]]
-  out.append(pred_generics)
+  out.append(pred)
   return out
 
 with open("../outputs/data/test_data.csv","r") as file:

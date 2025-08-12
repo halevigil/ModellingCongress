@@ -2,13 +2,13 @@ import pandas as pd
 import re
 import json
 import numpy as np
-import modellingcongress.genericing_util as genericing_util
+from clustering_util import cluster
+import argparse
+import os
+
 
 # Extract all committee spellings
 
-bills_datasets = [f"data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/bills.csv" for term in range(111,120)]
-bills_df=pd.concat([pd.read_csv(dataset) for dataset in bills_datasets])
-committees=[committee for committee in set(bills_df["committee"]) if type(committee)==str and committee !=" " and committee!=""]
 committee_search_item={}
 def all_committee_spellings(committees):
   committee_spellings={committee:[committee] for committee in committees}
@@ -43,7 +43,7 @@ def get_action_committee_map(actions,committee_search_item):
   action_committees_map={}
   for action in actions:
     action_committees_map[action]=[]
-    for committee in committees:
+    for committee in committee_search_item:
       if re.search(committee_search_item[committee],action):
         action_committees_map[action].append(committee)
 
@@ -140,20 +140,31 @@ def special_generics_f(action):
   return None
 
 if __name__=="__main__":
+  parser = argparse.ArgumentParser(description="makes generics by manually stripping out names and combining actions with small edit distance")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="../outputs/preprocess0.json")
+  parser.add_argument("--threshold","-t",type=float,default=1/7,help="the max value of threshold*max(action1 length,action 2 length) for which the two actions will have the same generic")
+  args,unknown = parser.parse_known_args()
+
+  bills_datasets = [f"../data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/bills.csv" for term in range(111,120)]
+  bills_df=pd.concat([pd.read_csv(dataset) for dataset in bills_datasets])
+  committees=[committee for committee in set(bills_df["committee"]) if type(committee)==str and committee !=" " and committee!=""]
+
   committee_spellings,committee_search_item=all_committee_spellings(committees)
-  # Map each action to the committees it is in
-  datasets = [f"data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
+
+  df = pd.read_csv(os.path.join(args.d,"data_no_generics"))
+  datasets = [f"../data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
   history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
   actions = list(history_df["action"])
 
-  # returns a map from action to the committee it is in
+  # Map from action to the committees it is in
   action_committees_map=get_action_committee_map(actions,committee_search_item)
-  json.dump(action_committees_map,open("./../outputs/action_committees_map.json","w"),indent=2)
-  action_committees_map = json.load(open("./../outputs/action_committees_map.json","r"))
-
-
-  generics = genericing_util.generic(actions,similar_after_processing,special_generics_f)
-  with open("../outputs/generics.json","w") as file:
+  with open(os.path.join(args.d,"action_committee_map.json"),"w") as file:
+    json.dump(action_committees_map,file,indent=2)
+  # with open(os.path.join(args.d,"action_committee_map.json"),"r") as file:
+  #   action_committees_map=json.load(file)
+  
+  generics = cluster(actions,lambda action1,action2:similar_after_processing(action1,action2,args.threshold),special_generics_f)
+  with open(args.output,"w") as file:
     json.dump(generics,file)
 
 
