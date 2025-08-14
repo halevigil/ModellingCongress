@@ -6,6 +6,10 @@ from collections import defaultdict
 import re
 import pandas as pd
 import json
+import argparse
+import os
+
+
 # maps an action to the categories it belongs to
 regexes={r"^All points of consideration against consideration.*? are waived",\
          r"^ANNOUNCEMENT",r"^APPOINTMENT OF CONFEREE",r"^APPOINTMENT OF.*? CONFEREE",\
@@ -75,24 +79,31 @@ regexes={r"^All points of consideration against consideration.*? are waived",\
             "committee","unanimous consent","voice vote","cloture","closed rule","pursuant to",
             "unfinished","in the nature of a substitute","waive"}
 
+# categorizes an action
 def categorize(action):
   out=[]
   for regex in regexes:
     if re.search(regex,action.lower() if regex.islower() else action):
       out.append(regex)
+  out.extend
   return out
 
-# Makes categories out of these actionsre 
-def make_categories(actions,f):
+# Makes categories out of these actions 
+def make_categories(actions,categorize_f):
   categories=defaultdict(list)
   for action in actions:
-    for category in f(action):
+    for category in categorize_f(action):
       categories[category].append(action)
   return dict(categories)
 if __name__=="__main__":  
-  datasets = [f"../data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
-  history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
-  actions = list(history_df["action"])
-  categories = make_categories(actions,categorize)
-  with open("../outputs/categories.json","w") as file:
-    json.dump(categories,file)
+  parser = argparse.ArgumentParser(description="makes generics by manually stripping out names and combining actions with small edit distance")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("--threshold","-t",type=float,default=1/7,help="the max value of threshold*max(action1 length,action 2 length) for which the two actions will have the same generic")
+  args,unknown = parser.parse_known_args()
+  df = pd.read_csv(os.path.join(args.preprocessing_dir,"data_no_generics.csv"))
+  actions = list(df["action"])
+  with open(os.path.join(args.preprocessing_dir,"action_committee_map.json"),"r") as file:
+    action_committee_map = json.load(file)
+  categories_dict = make_categories(actions,lambda x:categorize(x)+action_committee_map[x])
+  with open(os.path.join(args.preprocessing_dir,"categories_dict.json"),"w") as file:
+    json.dump(categories_dict,file,indent=2)

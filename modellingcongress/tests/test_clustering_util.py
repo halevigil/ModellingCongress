@@ -1,6 +1,7 @@
 import pytest
 import sys
-from ..modellingcongress.clustering_util import cluster
+# from modellingcongress.clustering_util import cluster
+from ..clustering_util import cluster
 
 def test_basic_clustering():
   actions = ['a', 'b', 'a', 'c', 'b']

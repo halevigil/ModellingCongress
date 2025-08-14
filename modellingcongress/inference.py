@@ -12,11 +12,11 @@ import openai
 import numpy as np
 import os
 import pandas as pd
-from categorying import categories_map
+from categorize import categories_map
 
 
 client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
-with open("../outputs/generics_dict_08-04_manual-llm-manual.json") as file:
+with open("./outputs/generics_dict_08-04_manual_llm_manual.json") as file:
   generics = json.load(file)
 
 def refine_actions(actions):
@@ -49,9 +49,9 @@ def generic_refined_actions(refined_actions):
  
 
 
-with open("../outputs/common_generic_names.json","r") as file:
+with open("./outputs/common_generic_names.json","r") as file:
   common_generic_names = json.load(file)
-with open("../outputs/common_category_names.json","r") as file:
+with open("./outputs/common_category_names.json","r") as file:
   common_category_names = json.load(file)
 def predict_bill(bill_df,refine_first=True):
   if refine_first:
@@ -62,7 +62,7 @@ def predict_bill(bill_df,refine_first=True):
   
   vecs = create_bill_vectors(bill_df)
 
-  state_dict = torch.load("../outputs/models/08-04_withextras_bce_lr1e-5_beta1e-06/epoch200.pt")
+  state_dict = torch.load("./outputs/models/08-04_withextras_bce_lr1e-5_beta1e-06/epoch200.pt")
   weights = state_dict["model"]["weight"]
   model=torch.nn.Linear(weights.shape[1],weights.shape[0])
   dotenv.load_dotenv()
@@ -84,7 +84,7 @@ def predict_bill(bill_df,refine_first=True):
   out.append(pred)
   return out
 
-with open("../outputs/data/test_data.csv","r") as file:
+with open("./outputs/data/test_data.csv","r") as file:
   bill_dfs = [x[1] for x in pd.read_csv(file).groupby("bill_id")]
   bill_dfs.sort(key=lambda x:len(x["action"]),reverse=True)
 

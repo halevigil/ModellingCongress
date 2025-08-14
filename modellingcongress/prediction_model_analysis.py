@@ -8,9 +8,9 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import sklearn
 from collections import defaultdict, Counter
-with open("../outputs/generics_dict_08-04_manual-llm-manual.json","r") as file:
+with open("./outputs/generics_dict_08-04_manual_llm_manual.json","r") as file:
   generics_dict = json.load(file)
-with open("../outputs/categories_08-04.json","r") as file:
+with open("./outputs/categories_08-04.json","r") as file:
   categories = json.load(file)
 
 
@@ -43,7 +43,7 @@ common_generic_names = [name for name in generics.keys() if generic_lens[name]>=
 common_category_names = [name for name in categories.keys() if category_lens[name]>=50]
 common_generic_names_inv={name:i for i,name in enumerate(common_generic_names)}
 common_category_names_inv={name:i for i,name in enumerate(common_category_names)}
-# with open("./../outputs/generic_names_output.jsonl", "r") as file:
+# with open("././outputs/generic_names_output.jsonl", "r") as file:
 #   for line in file:
 #     if line.strip():  # Skip empty lines
 #       response = json.loads(line)
@@ -78,7 +78,7 @@ class ActionDataset(Dataset):
   def __getitem__(self,idx):
     return self.inputs[idx],self.outputs[idx]
 
-ds = ActionDataset("../outputs/prediction_vecs_08-04_withextras.npz")
+ds = ActionDataset("./outputs/prediction_vecs_08-04_withextras.npz")
 # print(len(ds))
 train_dataset,test_dataset,val_dataset = torch.utils.data.random_split(ds,[0.6,0.2,0.2])
 
@@ -86,9 +86,9 @@ train_dataset,test_dataset,val_dataset = torch.utils.data.random_split(ds,[0.6,0
 from collections import defaultdict
 import torch
 import itertools
-# model.load_state_dict(torch.load("../outputs/models/08-04_lr1e-5_beta.01/epoch99.pt")["model"])
+# model.load_state_dict(torch.load("./outputs/models/08-04_lr1e-5_beta.01/epoch99.pt")["model"])
 model = torch.nn.Linear(len(common_generic_names)*2+len(common_category_names)*2+N_TERMS+2,len(common_generic_names)+1+len(common_category_names))
-model.load_state_dict(torch.load("../outputs/models/08-07_lr3e-04_lassoweight1e-05_batch256_extra/epoch160.pt")["model"])
+model.load_state_dict(torch.load("./outputs/models/08-07_lr3e-04_lassoweight1e-05_batch256_extra/epoch160.pt")["model"])
 
 weights = model.weight.detach().numpy() 
 recent_chains=[]

@@ -1,4 +1,7 @@
-from ..modellingcongress.make_generics import process_action, edit_distance,edit_distance_below,similar_after_processing,special_generics_f
+import os
+from make_generics import process_action, edit_distance,edit_distance_below,similar_after_processing,special_generics_f
+
+
 def test_process_action():
   # Test basic committee name removal
   assert process_action("Referred to House Committee on Energy and Commerce") == "referred to committee"

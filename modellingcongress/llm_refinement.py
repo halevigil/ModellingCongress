@@ -1,5 +1,4 @@
-
-# Prepare batch to come up with names for each generic
+# Refine generics using llm
 import random
 import numpy as np
 import json
@@ -10,7 +9,9 @@ import dotenv
 import openai
 import time
 import argparse
-
+import re
+from modellingcongress.make_generics import edit_distance_below
+from IPython.display import display
 
 def llm_input(generic_names):
   return f"""I am analyzing a dataset full of Congressional actions. I want to refine each action to clean them up and remove the names and descriptions of congresspeople, bills, amendments, times, votes, rules and committees.
@@ -126,32 +127,31 @@ Now, please come up with a refinement for the following actions. Please only giv
 
 # Creates the batches for llm refinement
 # Returns paths to the created batches
-def create_batches(actions,batch_folder,batch_size):
-  BATCH_SIZE = 200
-  generics_batches = np.array_split(actions, range(batch_size, len(actions), BATCH_SIZE))
+def create_batches(actions,input_dir,batch_size):
+  generics_batches = np.array_split(actions, range(batch_size, len(actions), batch_size))
   action_i=0
   paths=[]
-  input_folder = os.path.join(batch_folder,"input")
-  if not os.path.exists(input_folder):
-    os.mkdir(input_folder)
   for batch_i,batch in enumerate(generics_batches):
     input_len=0
-    batch_path=os.path.join(input_folder,"batch{batch_i}")
+    batch_path=os.path.join(input_dir,"batch{batch_i}")
     with open(batch_path,"w") as file:
       for generic_i in range(0,len(batch),5):
-        names=generics_dict[generic_i:generic_i+5]
-        input=llm_input(names)
+        print("generics_dict:",generics_dict)
+        actions_batch=actions[generic_i:generic_i+5]
+        input=llm_input(actions_batch)
         input_len+=len(input)
         json.dump({"custom_id":"generic"+str(action_i),"url":"/v1/responses","method":"POST","body":{"input":input,"model":"gpt-4.1-mini"}}, file)
         file.write("\n")
         action_i+=1
     paths.append(batch_path)
   dotenv.load_dotenv()
-  return paths
+  return len(paths)
 
-def run_batches(input_paths,output_dir):
+def run_batches(input_dir,output_dir):
   client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
 
+  n_batches = len(os.listdir(input_dir))
+  input_paths = [os.path.join(input_dir,f"batch{batch_i}") for batch_i in range(n_batches)]
   for batch_i,path in enumerate(input_paths):
     statuses=[batch.status for batch in client.batches.list()]
     while "cancelling" in statuses or "in_progress" in statuses or "finalizing" in statuses:
@@ -171,21 +171,70 @@ def run_batches(input_paths,output_dir):
       time.sleep(20)
     if failed:
       break
-    with open(os.path.join(output_dir,"batch{batch_i}.jsonl"),"w") as file:
+    output_file = os.path.join(output_dir,"batch{batch_i}.jsonl")
+    with open(output_file,"w") as file:
       file.write(client.files.content(file_id=client.batches.retrieve(batch_id=batch.id).output_file_id).text)
     print(f"finished batch {batch_i}")
     time.sleep(180)
 
+def manual_refinement(name):
+  if not re.search("five.minute.rule",name):
+    name = re.sub(r"\\w+ (minutes)|(minute)|(hour)|(hours)","[TIME]",name)
+  name = re.sub(r"\[TIME\]s","[TIME]",name)
+  name = re.sub(r"H\. ?Res\. ?[0-9]+","[RESOLUTION]",name)
+  name = re.sub(r"H\. ?R\. ?[0-9]+","[BILL]",name)
+  name = re.sub(r"S\. ?[0-9]+","[BILL]",name)
+  name = re.sub(r"S\ ?.Res\. ?[0-9]+","[RESOLUTION]",name)
+  name = re.sub(r"[0-9]+ \[TIME\]","[TIME]",name)
+  name = re.sub(r"(one|two|three|four|five|ten|thirty|sixty) \[TIME\]","[TIME]",name)
+  name = re.sub(r"\[TIME\]s","[TIME]",name)
+  name = re.sub(r"(No|no)\. [0-9]+", "[NUMBER]", name)
+  name = re.sub(r"\(.*\)", "", name)
+  name = re.sub(r"  +", " ", name)
+  name=name.strip()
+  return name
+
+
+def create_refinement_map(actions,dir):
+  refinements=[None for i in range(len(actions))]
+  manually_inspect=[]
+  response_start=0
+  for path in [os.path.join(dir,"batch{batch_i}.jsonl") for batch_i in range(len(os.listdir(dir)))]:
+    with open(path,"r") as file:
+      for response in file:
+        text = json.loads(response)["response"]["body"]["output"][0]["content"][0]["text"]
+        refinements=[x for x in text.split("\n") if x!=""]
+        for i,refinement in enumerate(refinements):
+          if refinement=="":
+            continue
+          if not edit_distance_below(actions[response_start+i],refinement,2/3*max(len(actions[response_start+i]),len(refinement))):
+            manually_inspect.append((actions[response_start:response_start+5],refinements))
+            break
+        response_start+=5
+  refinement_map = {action:refinement for action,refinement in zip(actions,refinements) if refinement!=None}
+  for action in refinement_map:
+    refinement_map[action]=manual_refinement(refinement_map[action])
+  return refinement_map,manually_inspect
+
+
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description="uses llm to refine manual generics")
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="../outputs/preprocess0.json")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
   parser.add_argument("--batch_size",type=int,default=200)
 
 
   args,unknown = parser.parse_known_args()
-  if not os.path.exists(os.path.join(args.d,"llm_refinement")):
-    os.mkdir(os.path.join(args.d,"llm_refinement"))
-  with open(os.path.join(args.d,"generics_dict_manual.json"),"r") as file:
+  if not os.path.exists(os.path.join(args.preprocessing_dir,"llm_refinement_input")):
+    os.mkdir(os.path.join(args.preprocessing_dir,"llm_refinement_input"))
+  if not os.path.exists(os.path.join(args.preprocessing_dir,"llm_refinement_output")):
+    os.mkdir(os.path.join(args.preprocessing_dir,"llm_refinement_output"))
+  with open(os.path.join(args.preprocessing_dir,"generics_dict_manual.json"),"r") as file:
     generics_dict = json.load(file)
-  paths = create_batches(list(generics_dict.keys()),os.path.join(args.d,"llm_refinement"))
-  run_batches(paths)
+  create_batches(list(generics_dict.keys()),os.path.join(args.preprocessing_dir,"llm_refinement_input"),args.batch_size)
+  run_batches(os.path.join(args.preprocessing_dir,"llm_refinement_input"),os.path.join(args.preprocessing_dir,"llm_refinement_output"))
+  refinement_map,manually_inspect = create_refinement_map(list(generics_dict.keys()),os.path.join(args.preprocessing_dir,"llm_refinement_output"))
+  display(manually_inspect)
+  with open(os.path.join(args.preprocessing_dir,"refinement_map.json"),"w") as file:
+    json.dump(refinement_map,file)
+  # Then you would manually inspect manually_inspect
+  # and change refinement_map either manually or programmatically

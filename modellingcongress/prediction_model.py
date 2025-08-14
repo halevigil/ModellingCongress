@@ -1,3 +1,5 @@
+# Trains a prediction market to forecast future actions based on previous actions
+
 import json
 import pandas as pd
 from collections import defaultdict, Counter
@@ -33,11 +35,11 @@ class ActionDataset(torch.utils.data.Dataset):
   def __getitem__(self,idx):
     return self.inputs[idx],self.outputs[idx]
 
-ds = ActionDataset(pd.read_pickle("../outputs/prediction_vecs"))
+ds = ActionDataset(pd.read_pickle("./outputs/prediction_vecs"))
 train_dataset,val_dataset = torch.utils.data.random_split(ds,[0.8,0.2])
 
 
-def train_model(lr=1e-4,lasso_weight=1e-7,batch_size=32,extra_pred_weight=1,continue_from=None,special_name="",override_previous=False,end_epoch=301,n_epochs=None):
+def train_model(lr=3e-4,lasso_weight=1e-5,batch_size=256,extra_pred_weight=1,continue_from=None,special_name="",override_previous=False,end_epoch=301,n_epochs=None):
   hyperparams={"lr":lr,"lasso_weight":lasso_weight,"batch size":batch_size,"extra_pred_weight":extra_pred_weight}
   print("hyperparameters:",hyperparams)
   train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=batch_size,shuffle=True)
@@ -45,7 +47,7 @@ def train_model(lr=1e-4,lasso_weight=1e-7,batch_size=32,extra_pred_weight=1,cont
 
   model = torch.nn.Linear(ds.input_len,ds.output_len)
   optim = torch.optim.Adam(model.parameters(),lr=lr)
-  folder = "../outputs/models/08-07_lr{:.0e}_lassoweight{:.0e}_batch{}_extra{}{}".format(lr,lasso_weight,batch_size,extra_pred_weight,special_name)
+  folder = "./outputs/models/08-07_lr{:.0e}_lassoweight{:.0e}_batch{}_extra{}{}".format(lr,lasso_weight,batch_size,extra_pred_weight,special_name)
   log=""
   if not os.path.exists(folder):
     os.mkdir(folder)

@@ -7,24 +7,24 @@ import argparse
 
 
 parser = argparse.ArgumentParser(description="prepare data with generics")
-parser.add_argument("-d","--preprocessing_dir",type=str,default="../outputs/preprocess0.json")
-
+parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
 args,unknown = parser.parse_known_args()
 
-with open(os.path.join(args.d,"generics_dict_manual-llm-manual.json"),"r") as file:
+with open(os.path.join(args.preprocessing_dir,"generics_dict_manual_llm_manual.json"),"r") as file:
   generics_dict = json.load(file)
-with open("../outputs/categories_08-04.json","r") as file:
+with open(os.path.join(args.preprocessing_dir,"categories_dict.json"),"r") as file:
   categories = json.load(file)
 generic_map={}
-for name in generics:
-  for action in generic_map[name]:
-    generic_map[action]=name
+for generic in generics_dict:
+  for action in generics_dict[generic]:
+    generic_map[action]=generic
 category_map=defaultdict(list)
 for name in categories:
   for i,action in enumerate(categories[name]):
     category_map[action].append(name)
 
-data = pd.read_csv("../outputs/data/data_pregenericing.csv")
+
+data = pd.read_csv(os.path.join(args.preprocessing_dir,"data_no_generics.csv"))
 data["generic"]=data["action"].apply(lambda x:generic_map[x])
 data["categories"]=data["action"].apply(lambda x:category_map[x])
 bills = [bill for (id, bill) in data.groupby("bill_id")]

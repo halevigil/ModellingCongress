@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import torch
-from ..modellingcongress.inference import predict_bill
+from inference import predict_bill
 
 def test_predict_bill():
   # Create sample test data
