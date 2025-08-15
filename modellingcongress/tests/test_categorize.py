@@ -1,4 +1,4 @@
-from ..modellingcongress.categorize import categorize, make_categories
+from ..categorize import categorize, make_categories
 def test_categorize_empty():
   assert categorize("") == []
 

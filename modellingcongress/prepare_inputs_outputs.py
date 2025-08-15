@@ -48,11 +48,11 @@ def create_vectors_bill(bill_df,common_generics,common_categories,alpha):
         if category in common_categories_inv:
           curr_categories[common_categories_inv[category]]=1
     
-    recent_generics=alpha*np.array(recent_generics)+alpha*np.array(prev_generic)
+    recent_generics=alpha*np.array(recent_generics)+np.array(prev_generic)
     cum_prev_generics=np.array(cum_prev_generics)+prev_generic
   
 
-    recent_categories=alpha*recent_categories+(1-alpha)*np.array(prev_categories)
+    recent_categories=alpha*recent_categories+np.array(prev_categories)
     cum_prev_categories=np.array(cum_prev_categories)+prev_categories
     chamber = np.zeros(2)
     if row["chamber"]=="House":
@@ -70,12 +70,12 @@ def concat(ls):
   for l in ls:
     out+=l
   return out
-# Normalize the cum_prev axes to mean=0 std=0.5
+# Normalize the cum_prev axes to std=1
 # so that coefficients are of similar size to recent
 # inplace and also return updated vectors
 def normalize(to_normalize,all_data):
-  scaler_preds_generics = sklearn.preprocessing.StandardScaler().fit(all_data["cum_prev_generics"])
-  scaler_preds_categories = sklearn.preprocessing.StandardScaler().fit(all_data["cum_prev_categories"])
+  scaler_preds_generics = sklearn.preprocessing.StandardScaler(with_mean=False).fit(all_data["cum_prev_generics"])
+  scaler_preds_categories = sklearn.preprocessing.StandardScaler(with_mean=False).fit(all_data["cum_prev_categories"])
 
   to_normalize["cum_prev_generics"] = scaler_preds_generics.transform(to_normalize["cum_prev_generics"])
   to_normalize["cum_prev_categories"] = scaler_preds_categories.transform([to_normalize["cum_prev_categories"]])[0]

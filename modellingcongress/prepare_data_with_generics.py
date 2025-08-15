@@ -13,14 +13,14 @@ args,unknown = parser.parse_known_args()
 with open(os.path.join(args.preprocessing_dir,"generics_dict_manual_llm_manual.json"),"r") as file:
   generics_dict = json.load(file)
 with open(os.path.join(args.preprocessing_dir,"categories_dict.json"),"r") as file:
-  categories = json.load(file)
+  categories_dict = json.load(file)
 generic_map={}
 for generic in generics_dict:
   for action in generics_dict[generic]:
     generic_map[action]=generic
 category_map=defaultdict(list)
-for name in categories:
-  for i,action in enumerate(categories[name]):
+for name in categories_dict:
+  for action in categories_dict[name]:
     category_map[action].append(name)
 
 
