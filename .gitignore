@@ -1,0 +1,10 @@
+data
+.env
+.ipynb_checkpoints/
+outputs/*
+example_refinements.txt
+*.pyc
+modellingcongress/embedding.py
+.pytest_cache
+.vscode
+__pycache__
