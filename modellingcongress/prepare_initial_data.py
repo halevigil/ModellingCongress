@@ -24,4 +24,4 @@ for bill in bills:
   bill.loc[-1]=bill.iloc[-1]
   bill.at[-1,"action"]="Last Action"
 
-history_df.to_csv(os.path.join(args.preprocessing_dir,"data_no_generics.csv"),index=False)
+history_df.to_csv(os.path.join(args.preprocessing_dir,"initial_data.csv"),index=False)

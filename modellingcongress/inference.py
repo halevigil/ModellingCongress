@@ -8,6 +8,8 @@ import openai
 from llm_refinement import llm_input
 from prediction_model import create_bill_vectors,ActionDataset
 from make_generics import edit_distance_below
+from prepare_inputs_outputs import create_next_vector
+from categorize import categorize
 import openai
 import numpy as np
 import os
@@ -35,7 +37,7 @@ def refine_actions(actions):
         action_i+=1
   return refinements
 
-def generic_refined_actions(refined_actions):
+def get_generic(refined_actions):
   out=[None for i in range(len(refined_actions))]
   for i,refinement in enumerate(refined_actions):
     for name in reversed(generics):
@@ -49,43 +51,50 @@ def generic_refined_actions(refined_actions):
  
 
 
-with open("./outputs/common_generic_names.json","r") as file:
-  common_generic_names = json.load(file)
-with open("./outputs/common_category_names.json","r") as file:
-  common_category_names = json.load(file)
-def predict_bill(bill_df,refine_first=True):
-  if refine_first:
-    refined_actions = refine_actions(bill_df["action"])
-  bill_df["generic"]=generic_refined_actions(refined_actions)
-  bill_df["categories"]=bill_df["action"].apply(categories_map)
-  bill_df.loc[-1]=([None for i in range(len(bill_df.columns))])
+with open("./outputs/generics.json","r") as file:
+  all_generics = json.load(file)
+with open("./outputs/categories.json","r") as file:
+  all_categories = json.load(file)
+
+def predict_action(prev_vectors,action,preprocessing_dir):
+  generic = get_generic([action])[0]
+  categories = categorize(action)
+  stds = os.path.join(preprocessing_dir,"standard_deviations")
+  out = create_next_vector(stds["std_generics"],stds["std_categories"],prev_vectors,all_generics,all_categories,generic,categories,prev_vectors=prev_vectors,term = None, chamber = None)
+
+# def predict_bill(bill_df,refine_first=True):
+#   if refine_first:
+#     refined_actions = refine_actions(bill_df["action"])
+#   bill_df["generic"]=generic_refined_actions(refined_actions)
+#   bill_df["categories"]=bill_df["action"].apply(categories_map)
+#   bill_df.loc[-1]=([None for i in range(len(bill_df.columns))])
   
-  vecs = create_bill_vectors(bill_df)
+#   vecs = create_bill_vectors(bill_df)
 
-  state_dict = torch.load("./outputs/models/08-04_withextras_bce_lr1e-5_beta1e-06/epoch200.pt")
-  weights = state_dict["model"]["weight"]
-  model=torch.nn.Linear(weights.shape[1],weights.shape[0])
-  dotenv.load_dotenv()
+#   state_dict = torch.load("./outputs/models/08-04_withextras_bce_lr1e-5_beta1e-06/epoch200.pt")
+#   weights = state_dict["model"]["weight"]
+#   model=torch.nn.Linear(weights.shape[1],weights.shape[0])
+#   dotenv.load_dotenv()
 
-  ds=ActionDataset(vecs)
-  loader = DataLoader(ds,batch_size= None,shuffle=False)
-  out=[]
-  with torch.no_grad():
-    for i,(inpt, output) in enumerate(loader):
-      inpt=inpt.float()
-      pred = model(inpt)
-      pred[:len(common_generic_names)+1]=softmax(pred[:len(common_generic_names)+1])
-      pred[len(common_generic_names)+1:]=sigmoid(pred[len(common_generic_names)+1:])
+#   ds=ActionDataset(vecs)
+#   loader = DataLoader(ds,batch_size= None,shuffle=False)
+#   out=[]
+#   with torch.no_grad():
+#     for i,(inpt, output) in enumerate(loader):
+#       inpt=inpt.float()
+#       pred = model(inpt)
+#       pred[:len(common_generic_names)+1]=softmax(pred[:len(common_generic_names)+1])
+#       pred[len(common_generic_names)+1:]=sigmoid(pred[len(common_generic_names)+1:])
       
-      p_misc=pred[len(common_generic_names)+1]
-      pred_generics = sorted([(p/(1-p_misc),b) for p,b in zip(pred[:len(common_generic_names)],common_generic_names)],reverse=True)
-      pred_categories = sorted([(p,b) for p,b in zip(pred[len(common_category_names)+1:],common_category_names)],reverse=True)
-      p_real_action=[p for p,b in pred_generics if b==bill_df.iloc[i]["generic"]]
-  out.append(pred)
-  return out
+#       p_misc=pred[len(common_generic_names)+1]
+#       pred_generics = sorted([(p/(1-p_misc),b) for p,b in zip(pred[:len(common_generic_names)],common_generic_names)],reverse=True)
+#       pred_categories = sorted([(p,b) for p,b in zip(pred[len(common_category_names)+1:],common_category_names)],reverse=True)
+#       p_real_action=[p for p,b in pred_generics if b==bill_df.iloc[i]["generic"]]
+#   out.append(pred)
+#   return out
 
-with open("./outputs/data/test_data.csv","r") as file:
-  bill_dfs = [x[1] for x in pd.read_csv(file).groupby("bill_id")]
-  bill_dfs.sort(key=lambda x:len(x["action"]),reverse=True)
+# with open("./outputs/data/test_data.csv","r") as file:
+#   bill_dfs = [x[1] for x in pd.read_csv(file).groupby("bill_id")]
+#   bill_dfs.sort(key=lambda x:len(x["action"]),reverse=True)
 
-predictions = predict_bill(bill_dfs[7000])
+# predictions = predict_bill(bill_dfs[7000])

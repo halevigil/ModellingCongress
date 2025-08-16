@@ -8,3 +8,5 @@ modellingcongress/embedding.py
 .pytest_cache
 .vscode
 __pycache__
+web-app/*
+flask-app

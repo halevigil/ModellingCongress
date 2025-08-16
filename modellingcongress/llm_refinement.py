@@ -220,7 +220,7 @@ def create_refinement_map(actions,dir):
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description="uses llm to refine manual generics")
   parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
-  parser.add_argument("--batch_size",type=int,default=1000)
+  parser.add_argument("--batch_size",type=int,default=750)
   parser.add_argument("--no_overwrite",action="store_true")
   
   dotenv.load_dotenv()
