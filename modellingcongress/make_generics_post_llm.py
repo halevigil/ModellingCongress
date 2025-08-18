@@ -15,13 +15,18 @@ with open(os.path.join(args.preprocessing_dir,"generics_dict_manual.json"),"r") 
   generics_dict_manual = json.load(file)
 with open(os.path.join(args.preprocessing_dir,"refinement_map.json"),"r") as file:
   refinement_map=json.load(file)
+# display(refinement_map)
 
 generics_dict_manual_llm=defaultdict(list)
+unrefined=[]
 for name in generics_dict_manual:
   if name in refinement_map:
     generics_dict_manual_llm[refinement_map[name]].extend(generics_dict_manual[name])
   else:
+    unrefined.append(name)
     generics_dict_manual_llm[name].extend(generics_dict_manual[name])
+
+# display(generics_dict_manual_llm.keys())
 generics_manual_llm = list(generics_dict_manual_llm.keys())
 
 

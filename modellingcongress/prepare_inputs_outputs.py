@@ -60,11 +60,8 @@ def create_next_vector(std_generics,std_categories,**kwargs):
   return out
 
 def normalize(to_normalize,std_generics,std_categories):
-  scaler_preds_generics = sklearn.preprocessing.StandardScaler(with_mean=False).fit(all_data["cum_prev_generics"])
-  scaler_preds_categories = sklearn.preprocessing.StandardScaler(with_mean=False).fit(all_data["cum_prev_categories"])
-
-  to_normalize["cum_prev_generics"] /= std_generics
-  to_normalize["cum_prev_categories"] /=std_categories
+  to_normalize["cum_prev_generics"] = list(np.stack(to_normalize["cum_prev_generics"],axis=0) /std_generics[None,:])
+  to_normalize["cum_prev_catgories"] = list(np.stack(to_normalize["cum_prev_categories"],axis=0) /std_categories[None,:])
   return to_normalize
 
 if __name__=="__main__":
@@ -72,14 +69,16 @@ if __name__=="__main__":
   parser = argparse.ArgumentParser(description="prepare data with generics")
   parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
   parser.add_argument("--decay_factor",type=float,default=2/3,help="the factor by which the previous generics decay for recent_generics vectors")
+  parser.add_argument("--common_threshold",type=float,default=200,help="the min number of instances for a generic or category to be considered common")
   args,unknown = parser.parse_known_args()
 
   with open(os.path.join(args.preprocessing_dir,"generics_dict_manual.json"),"r") as file:
     generics_dict = json.load(file)
   with open(os.path.join(args.preprocessing_dir,"categories_dict.json"),"r") as file:
     categories_dict = json.load(file)
-  common_generics = {generic for generic in generics_dict if len(generics_dict)>=100}
-  common_categories = {category for category in categories_dict if len(categories_dict[category])>=100}
+  common_generics = {generic for generic in generics_dict if len(generics_dict[generic])>=args.common_threshold}
+  common_generics.add("Miscellaneous")
+  common_categories = {category for category in categories_dict if len(categories_dict[category])>=args.common_threshold}
 
   data = pd.read_csv(os.path.join(args.preprocessing_dir,"initial_data.csv"))
   generic_map={}
@@ -91,17 +90,14 @@ if __name__=="__main__":
   for action in set(data["action"]):
     if action not in generic_map:
       generic_map[action]="Miscellaneous"
-  print("finished generic map")
   category_map=defaultdict(list)
   for category in categories_dict:
     if category not in common_categories:
       continue
     for action in categories_dict[category]:
       category_map[action].append(category)
-  print("finished category map")
   data["generic"]=data["action"].apply(lambda x:generic_map[x])
   data["categories"]=data["action"].apply(lambda x:category_map[x])
-  print("finished adding generic/categories to df")
 
   bills = [bill for (id, bill) in data.groupby("bill_id")]
   random.seed(41)
@@ -110,21 +106,18 @@ if __name__=="__main__":
   test_data = pd.concat(bills[int(0.8*len(bills)):])
   all_data = pd.concat(bills)
 
-  # train_data.to_csv(os.path.join(args.preprocessing_dir,"train_data.csv"))
-  # test_data.to_csv(os.path.join(args.preprocessing_dir,"test_data.csv"))
-  # all_data.to_csv(os.path.join(args.preprocessing_dir,"all_data.csv"))
   common_generics=list(common_generics)
   common_categories=list(common_categories)
   with open(os.path.join(args.preprocessing_dir,"generics.json"),"w") as file:
     json.dump(common_generics,file)
   with open(os.path.join(args.preprocessing_dir,"categories.json"),"w") as file:
     json.dump(common_categories,file)
-  print("finished train/test split, common generics/categories")
   train_vecs = pd.concat([create_vectors_bill_unnormalized(bill,common_generics,common_categories,args.decay_factor) for i,bill in train_data.groupby("bill_id")])
   std_generics = np.std(np.stack(train_vecs["cum_prev_generics"],axis=0),axis=0)
   std_categories = np.std(np.stack(train_vecs["cum_prev_categories"],axis=0),axis=0)
   train_vecs=normalize(train_vecs,std_generics,std_categories)
   test_vecs = normalize(pd.concat([create_vectors_bill_unnormalized(bill,common_generics,common_categories,args.decay_factor) for i,bill in test_data.groupby("bill_id")]),std_generics,std_categories)
+
   with open(os.path.join(args.preprocessing_dir,"train_vectors.pkl"),"wb") as file:
     train_vecs.to_pickle(file)
   with open(os.path.join(args.preprocessing_dir,"test_vectors.pkl"),"wb") as file:

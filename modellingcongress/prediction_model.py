@@ -14,6 +14,7 @@ import builtins
 import sys
 import re
 import sklearn
+import argparse
 
 
 class ActionDataset(torch.utils.data.Dataset):
@@ -39,15 +40,15 @@ ds = ActionDataset(pd.read_pickle("./outputs/prediction_vecs"))
 train_dataset,val_dataset = torch.utils.data.random_split(ds,[0.8,0.2])
 
 
-def train_model(lr=3e-4,lasso_weight=1e-5,batch_size=256,extra_pred_weight=1,continue_from=None,special_name="",override_previous=False,end_epoch=301,n_epochs=None):
-  hyperparams={"lr":lr,"lasso_weight":lasso_weight,"batch size":batch_size,"extra_pred_weight":extra_pred_weight}
+def train_model(lr=3e-4,lasso_weight=1e-5,batch_size=256,continue_from=None,run_name=None,override_previous=False,end_epoch=300,n_epochs=None):
+  hyperparams={"lr":lr,"lasso_weight":lasso_weight,"batch size":batch_size}
   print("hyperparameters:",hyperparams)
   train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=batch_size,shuffle=True)
   val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=None,shuffle=True)
 
   model = torch.nn.Linear(ds.input_len,ds.output_len)
   optim = torch.optim.Adam(model.parameters(),lr=lr)
-  folder = "./outputs/models/08-07_lr{:.0e}_lassoweight{:.0e}_batch{}_extra{}{}".format(lr,lasso_weight,batch_size,extra_pred_weight,special_name)
+  folder = run_name or "./outputs/models/08-07_lr{:.0e}_lassoweight{:.0e}_batch{}".format(lr,lasso_weight,batch_size)
   log=""
   if not os.path.exists(folder):
     os.mkdir(folder)
@@ -77,8 +78,8 @@ def train_model(lr=3e-4,lasso_weight=1e-5,batch_size=256,extra_pred_weight=1,con
   val_pred_generics_losses=[]
   start_epoch = continue_from+1 if continue_from else 0
   if n_epochs:
-    end_epoch=start_epoch+n_epochs
-  for epoch in range(start_epoch,end_epoch):
+    end_epoch=start_epoch+n_epochs-1
+  for epoch in range(start_epoch,end_epoch+1):
     for i,(inpt,output) in enumerate(train_loader):
       optim.zero_grad()
       inpt=inpt.float()
@@ -88,7 +89,7 @@ def train_model(lr=3e-4,lasso_weight=1e-5,batch_size=256,extra_pred_weight=1,con
       pred_categories_loss = pred_categories_loss_fn(pred[:,ds.regular_generics_len():])
       
       lasso_loss = torch.norm(model.weight,p=1)
-      loss = pred_generics_loss+extra_pred_weight*pred_categories_loss+lasso_weight*lasso_loss
+      loss = pred_generics_loss+pred_categories_loss+lasso_weight*lasso_loss
       loss.backward()
       optim.step()
     with torch.no_grad():
@@ -115,4 +116,16 @@ def train_model(lr=3e-4,lasso_weight=1e-5,batch_size=256,extra_pred_weight=1,con
       break
     print(loss_str)
 if __name__=="__main__":
-  train_model()
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("--lr",type=float,default=3e-6,help="learning rate")
+  parser.add_argument("--batch_size",type=int,default=256,help="batch size")
+  parser.add_argument("--lasso_weight",type=float,default=1e-5,help="weight of lasso loss")
+  parser.add_argument("--continue_from","-c",type=int,default=None,help="epoch to continue from (-1 for last model run)")
+  parser.add_argument("--override_previous","-o",action="store_true",help="override previous model run")
+  parser.add_argument("--end_epoch",type=int,default=300,help="end epoch")
+  parser.add_argument("--n_epoch",type=int,default=None,help="number of epochs to run (overrides end epoch)")
+  parser.add_argument("--run_name",type=str,default=None,help="name for model run (if none, defaults to hyperparameters)")
+  args,unknown = parser.parse_known_args()
+  train_model(lr=args.lr,batch_size=args.batch_size,
+              lasso_weight=args.lasso_weight,continue_from=args.continue_from, override_previous=args.override_previous,end_epoch=args.end_epoch,n_epochs=args.n_epoch,special_name=args.special_name)
