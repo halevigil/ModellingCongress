@@ -1,321 +1,362 @@
-# # from prepare_inputs_outputs import create_vectors_bill,create_vectors_bill_normalized,concat,normalize
-# import pandas as pd
-# import numpy as np
-# def test_concat():
-#   # Test basic list concatenation
-#   test_lists = [[1,2], [3,4], [5,6]]
-#   result = concat(test_lists)
-#   assert result == [1,2,3,4,5,6]
-  
-#   # Test empty list
-#   assert concat([]) == []
-  
-#   # Test single list
-#   assert concat([[1,2]]) == [1,2]
+import pytest
+import pandas as pd
+import numpy as np
+from modellingcongress.prepare_inputs_outputs import (
+  create_next_vector,
+  create_next_vector_unnormalized,
+  create_vectors_bill_unnormalized,
+  normalize
+)
 
-# def test_normalize():
-#   # Create test data
-#   test_data = pd.DataFrame({
-#     'cum_prev_generics': [[1,2,3], [4,5,6]], 
-#     'cum_prev_categories': [[1,2], [3,4]]
-#   })
-  
-#   to_normalize = pd.Series({
-#     'cum_prev_generics': [2,3,4],
-#     'cum_prev_categories': [2,3]
-#   })
-  
-#   # Run normalization
-#   result = normalize(to_normalize, test_data)
-  
-#   # Verify normalization occurred
-#   assert isinstance(result, pd.Series)
-#   assert 'cum_prev_generics' in result
-#   assert 'cum_prev_categories' in result
-#   assert len(result['cum_prev_generics']) == 3
-#   assert len(result['cum_prev_categories']) == 2
 
-# def test_create_vectors_bill_normalized():
-#   # Test data
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1'],
-#     'categories': [['Cat1']],
-#     'chamber': ['House'],
-#     'term': [111]
-#   })
+def test_create_next_vector_unnormalized_initial():
+  """Test create_next_vector_unnormalized with no previous vectors."""
+  all_generics = ["generic1", "generic2", "generic3"]
+  all_categories = ["cat1", "cat2"]
   
-#   common_generics = ['Action1']
-#   common_categories = ['Cat1']
+  result = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic="generic1",
+    curr_categories=["cat1"],
+    term=111,
+    chamber="House"
+  )
   
-#   # Run function
-#   result = create_vectors_bill_normalized(test_df, common_generics, common_categories)
-  
-#   # Verify output is normalized
-#   assert isinstance(result, pd.DataFrame)
-#   assert 'cum_prev_generics' in result.columns
-#   assert 'cum_prev_categories' in result.columns
-# def test_create_vectors_bill_edge_cases():
-#   # Test empty dataframe
-#   empty_df = pd.DataFrame(columns=['generic','categories','chamber','term'])
-#   common_generics = ['Action1']
-#   common_categories = ['Cat1'] 
-#   result = create_vectors_bill(empty_df, common_generics, common_categories)
-#   assert len(result) == 0
+  assert result["output_generic"][0] == 1
+  assert result["output_generic"][1] == 0
+  assert result["output_categories"][0] == 1
+  assert result["chamber"][0] == 1
+  assert result["chamber"][1] == 0
+  assert result["term"][0] == 1
+  assert len(result["recent_generics"]) == 3
+  assert len(result["cum_prev_generics"]) == 3
 
-#   # Test with unknown generic and category
-#   test_df = pd.DataFrame({
-#     'generic': ['UnknownAction'],
-#     'categories': [['UnknownCat']],
-#     'chamber': ['House'],
-#     'term': [111]
-#   })
-#   result = create_vectors_bill(test_df, common_generics, common_categories)
-#   assert result.loc[0,'output_generic'][-1] == 1  # Unknown generic mapped to last position
-#   assert all(result.loc[0,'output_categories'] == 0)  # Unknown category mapped to zeros
-  
-#   # Test with null values
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1'],
-#     'categories': [None],
-#     'chamber': [None], 
-#     'term': [None]
-#   })
-#   result = create_vectors_bill(test_df, common_generics, common_categories)
-#   assert all(result.loc[0,'chamber'] == 0)  # Null chamber maps to zeros
-#   assert all(result.loc[0,'term'] == 0)  # Null term maps to zeros
-  
-#   # Test multiple bills with same generic/category
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1','Action1'],
-#     'categories': [['Cat1'],['Cat1']],
-#     'chamber': ['House','House'],
-#     'term': [111,111]
-#   })
-#   result = create_vectors_bill(test_df, common_generics, common_categories)
-#   # Verify that cumulative counts increase
-#   assert result.loc[1,'cum_prev_generics'][0] > result.loc[0,'cum_prev_generics'][0]
-#   assert result.loc[1,'cum_prev_categories'][0] > result.loc[0,'cum_prev_categories'][0]
-# def test_create_vectors_bill_edge_cases():
-#     # Test empty dataframe
-#     empty_df = pd.DataFrame(columns=['generic','categories','chamber','term'])
-#     common_generics = ['Action1']
-#     common_categories = ['Cat1'] 
-#     result = create_vectors_bill(empty_df, common_generics, common_categories)
-#     assert len(result) == 0
 
-#     # Test with unknown generic and category
-#     test_df = pd.DataFrame({
-#       'generic': ['UnknownAction'],
-#       'categories': [['UnknownCat']],
-#       'chamber': ['House'],
-#       'term': [111]
-#     })
-#     result = create_vectors_bill(test_df, common_generics, common_categories)
-#     assert result.loc[0,'output_generic'][-1] == 1  # Unknown generic mapped to last position
-#     assert all(result.loc[0,'output_categories'] == 0)  # Unknown category mapped to zeros
-    
-#     # Test with null values
-#     test_df = pd.DataFrame({
-#       'generic': ['Action1'],
-#       'categories': [None],
-#       'chamber': [None], 
-#       'term': [None]
-#     })
-#     result = create_vectors_bill(test_df, common_generics, common_categories)
-#     assert all(result.loc[0,'chamber'] == 0)  # Null chamber maps to zeros
-#     assert all(result.loc[0,'term'] == 0)  # Null term maps to zeros
-    
-#     # Test decay factor
-#     test_df = pd.DataFrame({
-#       'generic': ['Action1','Action1'],
-#       'categories': [['Cat1'],['Cat1']],
-#       'chamber': ['House','House'],
-#       'term': [111,111]
-#     })
-#     result = create_vectors_bill(test_df, common_generics, common_categories)
-#     assert result.loc[1,'recent_generics'][0] > result.loc[0,'recent_generics'][0]
-# def test_create_vectors_bill_math_verification():
-#   # Test mathematical correctness of exponential decay and cumulative sums
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1', 'Action2', 'Action1', 'Action2'],
-#     'categories': [['Cat1'], ['Cat2'], ['Cat1', 'Cat2'], ['Cat1']],
-#     'chamber': ['House', 'Senate', 'House', 'Senate'],
-#     'term': [111, 112, 113, 114]
-#   })
+def test_create_next_vector_unnormalized_with_previous():
+  """Test create_next_vector_unnormalized with previous vectors."""
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2"]
+  prev_vectors = {
+    "cum_prev_generics": np.array([1, 0]),
+    "recent_generics": np.array([0.5, 0]),
+    "output_generic": np.array([1, 0]),
+    "cum_prev_categories": np.array([1, 0]),
+    "recent_categories": np.array([0.5, 0]),
+    "output_categories": np.array([1, 0])
+  }
   
-#   common_generics = ['Action1', 'Action2']
-#   common_categories = ['Cat1', 'Cat2']
-#   alpha = 0.5
+def test_create_next_vector_unnormalized_decay_calculation():
+  """Test that decay calculation works correctly for recent vectors."""
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2"]
+  decay = 0.3
   
-#   result = create_vectors_bill(test_df, common_generics, common_categories, alpha)
+  prev_vectors = {
+    "cum_prev_generics": np.array([2, 1]),
+    "recent_generics": np.array([0.8, 0.4]),
+    "output_generic": np.array([1, 0]),
+    "cum_prev_categories": np.array([1, 2]),
+    "recent_categories": np.array([0.6, 0.2]),
+    "output_categories": np.array([1, 0])
+  }
   
-#   # Verify first row (no previous data)
-#   assert all(result.iloc[0]['recent_generics'] == 0)
-#   assert all(result.iloc[0]['cum_prev_generics'] == 0)
-#   assert all(result.iloc[0]['recent_categories'] == 0)
-#   assert all(result.iloc[0]['cum_prev_categories'] == 0)
+  result = create_next_vector_unnormalized(
+    decay=decay,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic="generic2",
+    curr_categories=["cat2"],
+    prev_vectors=prev_vectors,
+    term=112,
+    chamber="Senate"
+  )
   
-#   # Verify second row exponential decay calculation
-#   # recent_generics = alpha * 0 + alpha * [1,0] = [0.5, 0]
-#   expected_recent_generics = np.array([0.5, 0])
-#   np.testing.assert_array_equal(result.iloc[1]['recent_generics'], expected_recent_generics)
+  # Test recent_generics: prev_output * (1-decay) + decay * prev_recent
+  expected_recent_generics = np.array([1, 0]) * (1 - decay) + decay * np.array([0.8, 0.4])
+  np.testing.assert_array_almost_equal(result["recent_generics"], expected_recent_generics)
   
-#   # Verify cumulative sum
-#   expected_cum_prev = np.array([1, 0])
-#   np.testing.assert_array_equal(result.iloc[1]['cum_prev_generics'], expected_cum_prev)
-  
-#   # Verify third row calculations
-#   # Previous was Action2: [0,1], recent becomes alpha*[0.5,0] + alpha*[0,1] = [0.25, 0.5]
-#   expected_recent_generics_3 = np.array([0.25, 0.5])
-#   np.testing.assert_array_equal(result.iloc[2]['recent_generics'], expected_recent_generics_3)
-  
-#   # Cumulative: [1,0] + [0,1] = [1,1]
-#   expected_cum_prev_3 = np.array([1, 1])
-#   np.testing.assert_array_equal(result.iloc[2]['cum_prev_generics'], expected_cum_prev_3)
+  # Test recent_categories
+  expected_recent_categories = np.array([1, 0]) * (1 - decay) + decay * np.array([0.6, 0.2])
+  np.testing.assert_array_almost_equal(result["recent_categories"], expected_recent_categories)
 
-# def test_create_vectors_bill_category_math():
-#   # Test category vector calculations with different alpha
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1', 'Action1', 'Action1'],
-#     'categories': [['Cat1'], ['Cat2'], ['Cat1', 'Cat2']],
-#     'chamber': ['House', 'House', 'House'],
-#     'term': [111, 111, 111]
-#   })
-  
-#   common_generics = ['Action1']
-#   common_categories = ['Cat1', 'Cat2']
-#   alpha = 0.8
-  
-#   result = create_vectors_bill(test_df, common_generics, common_categories, alpha)
-  
-#   # First row: no previous categories
-#   assert all(result.iloc[0]['recent_categories'] == 0)
-#   assert all(result.iloc[0]['cum_prev_categories'] == 0)
-  
-#   # Second row: recent = 0.8*[0,0] + 0.2*[1,0] = [0.2, 0]
-#   expected_recent_cat_2 = np.array([0.2, 0])
-#   np.testing.assert_array_equal(result.iloc[1]['recent_categories'], expected_recent_cat_2)
-  
-#   # Third row: recent = 0.8*[0.2,0] + 0.2*[0,1] = [0.16, 0.2]
-#   expected_recent_cat_3 = np.array([0.16, 0.2])
-#   np.testing.assert_array_equal(result.iloc[2]['recent_categories'], expected_recent_cat_3)
 
-# def test_create_vectors_bill_output_vectors():
-#   # Test output vector generation
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1', 'UnknownAction', 'Action2'],
-#     'categories': [['Cat1'], ['UnknownCat'], ['Cat1', 'Cat2']],
-#     'chamber': ['House', 'Senate', None],
-#     'term': [111, 999, 112]  # 999 is outside MIN_TERM + N_TERMS range
-#   })
+def test_create_next_vector_unnormalized_cumulative_calculation():
+  """Test cumulative vector calculation."""
+  all_generics = ["generic1", "generic2", "generic3"]
+  all_categories = ["cat1", "cat2"]
   
-#   common_generics = ['Action1', 'Action2']
-#   common_categories = ['Cat1', 'Cat2']
-#   alpha = 0.5
+  prev_vectors = {
+    "cum_prev_generics": np.array([3, 1, 2]),
+    "recent_generics": np.array([0.5, 0.2, 0.1]),
+    "output_generic": np.array([0, 1, 0]),
+    "cum_prev_categories": np.array([2, 1]),
+    "recent_categories": np.array([0.3, 0.7]),
+    "output_categories": np.array([0, 1])
+  }
   
-#   result = create_vectors_bill(test_df, common_generics, common_categories, alpha)
+  result = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic="generic1",
+    curr_categories=["cat1"],
+    prev_vectors=prev_vectors,
+    term=113,
+    chamber="House"
+  )
   
-#   # First row: Action1 should be [1,0,0] (known generic)
-#   expected_output_generic_1 = np.array([1, 0, 0])
-#   np.testing.assert_array_equal(result.iloc[0]['output_generic'], expected_output_generic_1)
+  # Test cum_prev_generics: prev_output + prev_cumulative
+  expected_cum_generics = np.array([0, 1, 0]) + np.array([3, 1, 2])
+  np.testing.assert_array_equal(result["cum_prev_generics"], expected_cum_generics)
   
-#   # Second row: UnknownAction should be [0,0,1] (unknown generic)
-#   expected_output_generic_2 = np.array([0, 0, 1])
-#   np.testing.assert_array_equal(result.iloc[1]['output_generic'], expected_output_generic_2)
-  
-#   # Test chamber encoding
-#   expected_chamber_1 = np.array([1, 0])  # House
-#   np.testing.assert_array_equal(result.iloc[0]['chamber'], expected_chamber_1)
-  
-#   expected_chamber_2 = np.array([0, 1])  # Senate
-#   np.testing.assert_array_equal(result.iloc[1]['chamber'], expected_chamber_2)
-  
-#   expected_chamber_3 = np.array([0, 0])  # None
-#   np.testing.assert_array_equal(result.iloc[2]['chamber'], expected_chamber_3)
-  
-#   # Test term encoding
-#   expected_term_1 = np.zeros(9)
-#   expected_term_1[0] = 1  # term 111 - MIN_TERM(111) = 0
-#   np.testing.assert_array_equal(result.iloc[0]['term'], expected_term_1)
-  
-#   expected_term_3 = np.zeros(9)
-#   expected_term_3[1] = 1  # term 112 - MIN_TERM(111) = 1
-#   np.testing.assert_array_equal(result.iloc[2]['term'], expected_term_3)
+  # Test cum_prev_categories
+  expected_cum_categories = np.array([0, 1]) + np.array([2, 1])
+  np.testing.assert_array_equal(result["cum_prev_categories"], expected_cum_categories)
 
-# def test_create_vectors_bill_alpha_extremes():
-#   # Test with alpha = 0 (no decay) and alpha = 1 (full decay)
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1', 'Action1', 'Action1'],
-#     'categories': [['Cat1'], ['Cat1'], ['Cat1']],
-#     'chamber': ['House', 'House', 'House'],
-#     'term': [111, 111, 111]
-#   })
-  
-#   common_generics = ['Action1']
-#   common_categories = ['Cat1']
-  
-#   # Test alpha = 0 (no exponential weighting)
-#   result_no_decay = create_vectors_bill(test_df, common_generics, common_categories, 0.0)
-#   # With alpha=0, recent should stay at 0 since alpha*recent + alpha*prev = 0
-#   assert all(result_no_decay.iloc[1]['recent_generics'] == 0)
-#   assert all(result_no_decay.iloc[2]['recent_generics'] == 0)
-  
-#   # Test alpha = 1 (full previous value)
-#   result_full_decay = create_vectors_bill(test_df, common_generics, common_categories, 1.0)
-#   # With alpha=1: recent = 1*recent + 1*prev
-#   # Row 1: recent = 1*[0] + 1*[1] = [1]
-#   # Row 2: recent = 1*[1] + 1*[1] = [2]
-#   expected_recent_full = np.array([1.0])
-#   np.testing.assert_array_equal(result_full_decay.iloc[1]['recent_generics'], expected_recent_full)
-#   expected_recent_full_2 = np.array([2.0])
-#   np.testing.assert_array_equal(result_full_decay.iloc[2]['recent_generics'], expected_recent_full_2)
 
-# def test_create_vectors_bill_multiple_categories():
-#   # Test handling of multiple categories in single action
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1'],
-#     'categories': [['Cat1', 'Cat2', 'Cat3']],
-#     'chamber': ['House'],
-#     'term': [111]
-#   })
+def test_create_next_vector_unnormalized_multiple_categories():
+  """Test with multiple categories for current action."""
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2", "cat3", "cat4"]
   
-#   common_generics = ['Action1']
-#   common_categories = ['Cat1', 'Cat2', 'Cat3', 'Cat4']
-#   alpha = 0.5
+  result = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic="generic1",
+    curr_categories=["cat1", "cat3", "cat4"],
+    term=111,
+    chamber="House"
+  )
   
-#   result = create_vectors_bill(test_df, common_generics, common_categories, alpha)
-  
-#   # Should have 1s for Cat1, Cat2, Cat3 and 0 for Cat4
-#   expected_output_categories = np.array([1, 1, 1, 0])
-#   np.testing.assert_array_equal(result.iloc[0]['output_categories'], expected_output_categories)
+  expected_categories = np.array([1, 0, 1, 1])
+  np.testing.assert_array_equal(result["output_categories"], expected_categories)
 
-# def test_create_vectors_bill_dataframe_structure():
-#   # Test that output DataFrame has correct structure
-#   test_df = pd.DataFrame({
-#     'generic': ['Action1'],
-#     'categories': [['Cat1']],
-#     'chamber': ['House'],
-#     'term': [111]
-#   })
+
+def test_create_next_vector_unnormalized_no_current_data():
+  """Test with no current generic or categories."""
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2"]
   
-#   common_generics = ['Action1', 'Action2']
-#   common_categories = ['Cat1', 'Cat2']
-#   alpha = 0.5
+  result = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic=None,
+    curr_categories=None,
+    term=111,
+    chamber="House"
+  )
   
-#   result = create_vectors_bill(test_df, common_generics, common_categories, alpha)
+  np.testing.assert_array_equal(result["output_generic"], np.zeros(2))
+  np.testing.assert_array_equal(result["output_categories"], np.zeros(2))
+
+
+def test_create_next_vector_unnormalized_term_bounds():
+  """Test term vector with different term values."""
+  all_generics = ["generic1"]
+  all_categories = ["cat1"]
+  min_term = 111
+  n_terms = 5
   
-#   # Check DataFrame structure
-#   expected_columns = ['recent_generics', 'cum_prev_generics', 'recent_categories', 
-#               'cum_prev_categories', 'term', 'chamber', 'output_generic', 'output_categories']
-#   assert all(col in result.columns for col in expected_columns)
-#   assert len(result) == len(test_df)
+  # Test first term
+  result1 = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    term=111,
+    min_term=min_term,
+    n_terms=n_terms
+  )
+  expected_term1 = np.array([1, 0, 0, 0, 0])
+  np.testing.assert_array_equal(result1["term"], expected_term1)
   
-#   # Check vector dimensions
-#   assert len(result.iloc[0]['recent_generics']) == len(common_generics)
-#   assert len(result.iloc[0]['cum_prev_generics']) == len(common_generics)
-#   assert len(result.iloc[0]['recent_categories']) == len(common_categories)
-#   assert len(result.iloc[0]['cum_prev_categories']) == len(common_categories)
-#   assert len(result.iloc[0]['output_generic']) == len(common_generics) + 1  # +1 for unknown
-#   assert len(result.iloc[0]['output_categories']) == len(common_categories)
-#   assert len(result.iloc[0]['term']) == 9  # N_TERMS
-#   assert len(result.iloc[0]['chamber']) == 2
+  # Test middle term
+  result2 = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    term=113,
+    min_term=min_term,
+    n_terms=n_terms
+  )
+  expected_term2 = np.array([0, 0, 1, 0, 0])
+  np.testing.assert_array_equal(result2["term"], expected_term2)
+  
+  # Test last term
+  result3 = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    term=115,
+    min_term=min_term,
+    n_terms=n_terms
+  )
+  expected_term3 = np.array([0, 0, 0, 0, 1])
+  np.testing.assert_array_equal(result3["term"], expected_term3)
+
+
+def test_create_next_vector_unnormalized_chamber_encoding():
+  """Test chamber one-hot encoding."""
+  all_generics = ["generic1"]
+  all_categories = ["cat1"]
+  
+  # Test House
+  result_house = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    chamber="House"
+  )
+  np.testing.assert_array_equal(result_house["chamber"], np.array([1, 0]))
+  
+  # Test Senate
+  result_senate = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    chamber="Senate"
+  )
+  np.testing.assert_array_equal(result_senate["chamber"], np.array([0, 1]))
+  
+  # Test invalid chamber
+  result_invalid = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    chamber="InvalidChamber"
+  )
+  np.testing.assert_array_equal(result_invalid["chamber"], np.array([0, 0]))
+
+
+def test_create_next_vector_unnormalized_zero_decay():
+  """Test with zero decay factor."""
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2"]
+  
+  prev_vectors = {
+    "cum_prev_generics": np.array([1, 2]),
+    "recent_generics": np.array([0.5, 0.3]),
+    "output_generic": np.array([1, 0]),
+    "cum_prev_categories": np.array([1, 1]),
+    "recent_categories": np.array([0.4, 0.6]),
+    "output_categories": np.array([1, 0])
+  }
+  
+  result = create_next_vector_unnormalized(
+    decay=0.0,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic="generic2",
+    curr_categories=["cat2"],
+    prev_vectors=prev_vectors
+  )
+  
+  # With zero decay, recent should equal prev_output * 1 + 0 * prev_recent = prev_output
+  np.testing.assert_array_equal(result["recent_generics"], np.array([1, 0]))
+  np.testing.assert_array_equal(result["recent_categories"], np.array([1, 0]))
+
+
+def test_create_next_vector_unnormalized_full_decay():
+  """Test with full decay factor (1.0)."""
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2"]
+  
+  prev_vectors = {
+    "cum_prev_generics": np.array([1, 2]),
+    "recent_generics": np.array([0.5, 0.3]),
+    "output_generic": np.array([1, 0]),
+    "cum_prev_categories": np.array([1, 1]),
+    "recent_categories": np.array([0.4, 0.6]),
+    "output_categories": np.array([1, 0])
+  }
+  
+  result = create_next_vector_unnormalized(
+    decay=1.0,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic="generic2",
+    curr_categories=["cat2"],
+    prev_vectors=prev_vectors
+  )
+  
+  # With full decay, recent should equal prev_output * 0 + 1 * prev_recent = prev_recent
+  np.testing.assert_array_equal(result["recent_generics"], np.array([0.5, 0.3]))
+  np.testing.assert_array_equal(result["recent_categories"], np.array([0.4, 0.6]))
+  
+  assert result["output_generic"][1] == 1
+  assert result["cum_prev_generics"][0] == 2  # 1 + 1
+  assert result["chamber"][1] == 1
+  assert result["term"][1] == 1
+
+
+def test_create_next_vector_unnormalized_invalid_generic():
+  """Test with invalid generic name."""
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2"]
+  
+  result = create_next_vector_unnormalized(
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic="invalid_generic",
+    curr_categories=["cat1"]
+  )
+  
+  assert np.sum(result["output_generic"]) == 0
+
+
+def test_create_vectors_bill_unnormalized():
+  """Test create_vectors_bill_unnormalized function."""
+  bill_df = pd.DataFrame({
+    "generic": ["generic1", "generic2"],
+    "categories": [["cat1"], ["cat2"]],
+    "term": [111, 111],
+    "chamber": ["House", "Senate"]
+  })
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2"]
+  
+  result = create_vectors_bill_unnormalized(bill_df, all_generics, all_categories, decay=0.5)
+  
+  assert len(result) == 2
+  assert "recent_generics" in result.columns
+  assert "output_generic" in result.columns
+
+
+def test_normalize():
+  """Test normalize function."""
+  to_normalize = {
+    "cum_prev_generics": [np.array([2, 4]), np.array([1, 2])],
+    "cum_prev_categories": [np.array([1, 3]), np.array([2, 1])]
+  }
+  std_generics = np.array([1, 2])
+  std_categories = np.array([0.5, 1])
+  
+  result = normalize(to_normalize, std_generics, std_categories)
+  
+  assert isinstance(result["cum_prev_generics"], list)
+  assert len(result["cum_prev_generics"]) == 2
+
+
+def test_create_next_vector():
+  """Test create_next_vector function (normalized version)."""
+  all_generics = ["generic1", "generic2"]
+  all_categories = ["cat1", "cat2"]
+  std_generics = np.array([1, 1])
+  std_categories = np.array([1, 1])
+  
+  result = create_next_vector(
+    std_generics=std_generics,
+    std_categories=std_categories,
+    decay=0.5,
+    all_generics=all_generics,
+    all_categories=all_categories,
+    curr_generic="generic1",
+    curr_categories=["cat1"]
+  )
+  
+  assert "recent_generics" in result
+  assert "cum_prev_generics" in result

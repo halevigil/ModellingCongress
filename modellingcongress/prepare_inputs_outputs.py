@@ -15,10 +15,10 @@ def create_next_vector_unnormalized(decay,all_generics,all_categories,curr_gener
   if not prev_vectors:
     prev_vectors={"cum_prev_generics":np.zeros(len(all_generics)),
                   "recent_generics":np.zeros(len(all_generics)),
-                  "generic":np.zeros(len(all_generics)),
+                  "output_generic":np.zeros(len(all_generics)),
                   "cum_prev_categories":np.zeros(len(all_categories)),
                   "recent_categories":np.zeros(len(all_categories)),
-                  "categories":np.zeros(len(all_categories))}
+                  "output_categories":np.zeros(len(all_categories))}
   generics_inv = {name:i for i,name in enumerate(all_generics)}
   categories_inv = {name:i for i,name in enumerate(all_categories)}
   generic_vec = np.zeros(len(all_generics))
@@ -37,17 +37,17 @@ def create_next_vector_unnormalized(decay,all_generics,all_categories,curr_gener
   if term:
     term_vec[term-min_term]=1
   return {
-    "recent_generics":np.array(prev_vectors["generic"]*(1-decay)+decay*prev_vectors["recent_generics"]),
-    "cum_prev_generics":np.array(prev_vectors["generic"]+prev_vectors["cum_prev_generics"]),
-    "recent_categories":np.array(prev_vectors["categories"]*(1-decay)+decay*prev_vectors["recent_categories"]),
-    "cum_prev_categories":np.array(prev_vectors["categories"]+prev_vectors["cum_prev_categories"]),
+    "recent_generics":np.array(prev_vectors["output_generic"]*(1-decay)+decay*prev_vectors["recent_generics"]),
+    "cum_prev_generics":np.array(prev_vectors["output_generic"]+prev_vectors["cum_prev_generics"]),
+    "recent_categories":np.array(prev_vectors["output_categories"]*(1-decay)+decay*prev_vectors["recent_categories"]),
+    "cum_prev_categories":np.array(prev_vectors["output_categories"]+prev_vectors["cum_prev_categories"]),
     "term":term_vec,
     "chamber":chamber_vec,
-    "generic":generic_vec,
-    "categories":categories_vec
+    "output_generic":generic_vec,
+    "output_categories":categories_vec
   }
 def create_vectors_bill_unnormalized(bill_df,all_generics,all_categories,decay): 
-  out=pd.DataFrame(columns=["recent_generics","cum_prev_generics","recent_categories","cum_prev_categories","output_generic","output_categories"])
+  out=pd.DataFrame(columns=["recent_generics","cum_prev_generics","recent_categories","cum_prev_categories","term","chamber","output_generic","output_categories"])
   vecs = None
   for i,row in bill_df.iterrows():
     vecs=create_next_vector_unnormalized(decay,all_generics,all_categories,row["generic"],row["categories"],vecs,term=row["term"],chamber=row["chamber"])
@@ -72,7 +72,7 @@ if __name__=="__main__":
   parser.add_argument("--common_threshold",type=float,default=200,help="the min number of instances for a generic or category to be considered common")
   args,unknown = parser.parse_known_args()
 
-  with open(os.path.join(args.preprocessing_dir,"generics_dict_manual.json"),"r") as file:
+  with open(os.path.join(args.preprocessing_dir,"generics_dict_manual_llm_manual.json"),"r") as file:
     generics_dict = json.load(file)
   with open(os.path.join(args.preprocessing_dir,"categories_dict.json"),"r") as file:
     categories_dict = json.load(file)
@@ -115,6 +115,8 @@ if __name__=="__main__":
   train_vecs = pd.concat([create_vectors_bill_unnormalized(bill,common_generics,common_categories,args.decay_factor) for i,bill in train_data.groupby("bill_id")])
   std_generics = np.std(np.stack(train_vecs["cum_prev_generics"],axis=0),axis=0)
   std_categories = np.std(np.stack(train_vecs["cum_prev_categories"],axis=0),axis=0)
+  with open(os.path.join(args.preprocessing_dir,"standard_deviations.json"), "w") as file:
+    json.dump({"std_generics":std_generics,"std_categories":std_categories})
   train_vecs=normalize(train_vecs,std_generics,std_categories)
   test_vecs = normalize(pd.concat([create_vectors_bill_unnormalized(bill,common_generics,common_categories,args.decay_factor) for i,bill in test_data.groupby("bill_id")]),std_generics,std_categories)
 
