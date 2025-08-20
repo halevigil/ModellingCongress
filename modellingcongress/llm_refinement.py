@@ -197,18 +197,24 @@ def manual_refinement(name):
   name=name.strip()
   return name
 
-def create_refinements_nobatch(actions):
+def create_refinements(actions):
+  out=[]
+  for action_minibatch in np.array_split(actions,range(5,len(actions),5)):
+    out.extend(create_refinements_minibatch(action_minibatch))
+  return out
+  
+def create_refinements_minibatch(actions):
   inpt = llm_input(actions)
   client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
-  response = client.responses.create(input=inpt,model="gpt-5")
   for i in range(5):
+    response = client.responses.create(input=inpt,model="gpt-5")
     try:
       refinements= response.output[1].content[0].text.split("\n")
       assert(len(refinements)==len(actions))
-      return {action:refinement for action,refinement in zip(actions,refinements)}
+      return refinements
     except:
       continue
-  return {}
+  return actions
   
 
 

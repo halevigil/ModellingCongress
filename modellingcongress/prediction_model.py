@@ -18,11 +18,10 @@ import argparse
 
 
 class ActionDataset(torch.utils.data.Dataset):
-  def __init__(self,df):
-    self.inputs = [np.concatenate([arr1, arr2,arr3,arr4,arr5,arr6]) for arr1, arr2, arr3, arr4,arr5,arr6 in zip(df['recent_generics'], df['cum_prev_generics'],df["recent_categories"],df["cum_prev_categories"],df["term"],df["chamber"])]
-    self.outputs = [np.concatenate([arr1, arr2]) for arr1, arr2 in zip(df['output_generic'], df['output_categories'])]
-    self.GENERICS_LEN = df.iloc[0]["output_generic"].shape[0]
-    self.CATEGORIES_LEN = df.iloc[0]["output_categories"].shape[0]
+  def __init__(self,inputs,outputs,generics_len):
+    self.inputs=inputs
+    self.outputs=outputs
+    self.GENERICS_LEN=generics_len
   def input_len(self):
      return len(self.inputs[0])
   def output_len(self):
@@ -30,11 +29,13 @@ class ActionDataset(torch.utils.data.Dataset):
   def generics_len(self):
      return self.GENERICS_LEN
   def categories_len(self):
-     return self.CATEGORIES_LEN
+     return len(self.outputs[0])-len(self.inputs[0])
+  
   def __len__(self):
     return len(self.inputs)
   def __getitem__(self,idx):
-    return self.inputs[idx],self.outputs[idx]
+    return self.inputs[idx],(self.outputs[idx] if self.outputs else None)
+
 
 
 def train_model(preprocessing_dir,lr=3e-4,lasso_weight=1e-5,batch_size=256,continue_from=None,run_name=None,override_previous=False,end_epoch=300,n_epochs=None):
@@ -48,26 +49,31 @@ def train_model(preprocessing_dir,lr=3e-4,lasso_weight=1e-5,batch_size=256,conti
 
   model = torch.nn.Linear(ds.input_len(),ds.output_len())
   optim = torch.optim.Adam(model.parameters(),lr=lr)
-  folder = os.path.join(preprocessing_dir,run_name or "08-07_lr{:.0e}_lassoweight{:.0e}_batch{}".format(lr,lasso_weight,batch_size))
+  folder = os.path.join(preprocessing_dir,"models",run_name or "lr{:.0e}_lassoweight{:.0e}_batch{}".format(lr,lasso_weight,batch_size))
   log=""
   if not os.path.exists(folder):
     os.mkdir(folder)
     json.dump(hyperparams,open(os.path.join(folder,"hyperparameters.json"),"w"))
   
   prev_epochs = sorted([int(re.match(r"epoch([0-9]+)",file)[1]) for file in os.listdir(folder) if re.search(r"epoch[0-9]+",file)])
-  if continue_from==-1:
-    continue_from=prev_epochs[-1]
+  
   if not prev_epochs and continue_from!=None and continue_from!=-1:
     raise Exception("Trying to continue a model that doesn't exist")
   if prev_epochs and continue_from==None and not override_previous:
     raise Exception("Trying to run a model that already exists without a continue_from or override_previous")
+  if continue_from==-1 and prev_epochs:
+    continue_from=prev_epochs[-1]
   if prev_epochs and continue_from and continue_from>prev_epochs[-1]:
     raise Exception("Trying to load from model state that does not exist")
   elif prev_epochs and continue_from and prev_epochs[-1]>continue_from and not override_previous:
     raise Exception("Trying to override runs without override_previous")
-  if continue_from!=None:
+  if continue_from!=None and prev_epochs:
     model.load_state_dict(torch.load(os.path.join(folder,f"epoch{continue_from}.pt"))["model"])
     optim.load_state_dict(torch.load(os.path.join(folder,f"epoch{continue_from}.pt"))["optim"])
+    with open(os.path.join(os.path.join(folder,"log")),"r") as file:
+      for line in file:
+          log+=line
+          line+="\n"
   for epoch in prev_epochs:
     if continue_from and epoch>continue_from:
       os.remove(os.path.join(folder,f"epoch{continue_from}.pt"))
@@ -112,7 +118,7 @@ def train_model(preprocessing_dir,lr=3e-4,lasso_weight=1e-5,batch_size=256,conti
         torch.save({"model":model.state_dict(),"optim":optim.state_dict()},folder+f"/epoch{epoch}.pt")
         with open(os.path.join(folder,"log"),"w") as file:
           file.write(log)
-    if len(val_pred_generics_losses)>10 and val_pred_generics_losses[-1]+val_pred_generics_losses[-2]>val_pred_generics_losses[-3]+val_pred_generics_losses[-4]>val_pred_generics_losses[-5]+val_pred_generics_losses[-6]:
+    if len(val_pred_generics_losses)>10 and val_pred_generics_losses[-1]+val_pred_generics_losses[-2]+val_pred_generics_losses[-3]>val_pred_generics_losses[-4]+val_pred_generics_losses[-5]+val_pred_generics_losses[-6]>val_pred_generics_losses[-7]+val_pred_generics_losses[-8]+val_pred_generics_losses[-9]:
       break
     print(loss_str)
 if __name__=="__main__":
@@ -130,13 +136,13 @@ if __name__=="__main__":
   parser.add_argument("--run_name",type=str,default=None,help="name for model run (if none, defaults to hyperparameters)")
   args,unknown = parser.parse_known_args()
 
-  for lr in [2e-4,3e-5,3e-6]:
-    for lasso_weight in [1e-4,1e-5,1e-6]:
+  for lr in [3e-4,3e-5]:
+    for lasso_weight in [1e-5,1e-6,1e-7,0]:
       for batch_size in [128,256,512]:
-        try:
-          train_model(preprocessing_dir=args.preprocessing_dir,lr=lr,batch_size=args.batch_size,
-                  lasso_weight=args.lasso_weight,continue_from=args.continue_from, override_previous=False,end_epoch=args.end_epoch,n_epochs=args.n_epoch)
-        except:
-          continue
+        # try:
+        train_model(preprocessing_dir=args.preprocessing_dir,lr=lr,batch_size=batch_size,
+                lasso_weight=lasso_weight,continue_from=-1, override_previous=False,end_epoch=None,n_epochs=200)
+        # except:
+        #   continue
   # train_model(preprocessing_dir=args.preprocessing_dir,lr=args.lr,batch_size=args.batch_size,
   #             lasso_weight=args.lasso_weight,continue_from=args.continue_from, override_previous=True,end_epoch=args.end_epoch,n_epochs=args.n_epoch)
