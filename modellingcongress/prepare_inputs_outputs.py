@@ -44,9 +44,9 @@ class CreateInputsOutputs():
       for category in categories:
         if category in self.categories:
           categories_vec[self.categories_inv[category]]=1
-    return np.concat([generic_vec,categories_vec])
+    return np.concatenate([generic_vec,categories_vec])
   # creates input vector for an action
-  def create_input_vector_unnormalized(self,decay=2/3,prev_input_vector=None,prev_output_vector=None,term=None,chamber=None,min_term=111,n_terms=9):
+  def create_input_vector_unnormalized(self,prev_input_vector=None,prev_output_vector=None,term=None,chamber=None,min_term=111,n_terms=9):
     if prev_input_vector is None:
       prev_input_vector=np.zeros(2*len(self.generics)+2*len(self.generics)+2+n_terms)
     if prev_output_vector is None:
@@ -62,25 +62,26 @@ class CreateInputsOutputs():
       term_vec[term-min_term]=1
     
     prev_recent_generics=prev_input_vector[:len(self.generics)]
-    prev_cum_pred_generics=prev_input_vector[len(self.generics):2*len(self.generics)]
+    prev_cumulative_generics=prev_input_vector[len(self.generics):2*len(self.generics)]
     prev_recent_categories=prev_input_vector[2*len(self.generics):2*len(self.generics)+len(self.categories)]
-    prev_cum_pred_categories=prev_input_vector[2*len(self.generics)+len(self.categories):2*len(self.generics)+2*len(self.categories)]
+    prev_cumulative_categories=prev_input_vector[2*len(self.generics)+len(self.categories):2*len(self.generics)+2*len(self.categories)]
     prev_output_generics = prev_output_vector[:len(self.generics)]
     prev_output_categories = prev_output_vector[len(self.generics):]
     
+
     out_dict= {
-      "recent_generics":np.array(prev_output_generics*(1-decay)+decay*prev_recent_generics),
-      "cum_prev_generics":np.array(prev_output_generics+prev_cum_pred_generics),
-      "recent_categories":np.array(prev_output_categories*(1-decay)+decay*prev_recent_categories),
-      "cum_prev_categories":np.array(prev_output_categories+prev_cum_pred_categories),
+      "recent_generics":np.array(prev_output_generics*(1-self.processing["decay"])+self.processing["decay"]*prev_recent_generics),
+      "cumulative_generics":np.array(prev_output_generics+prev_cumulative_generics),
+      "recent_categories":np.array(prev_output_categories*(1-self.processing["decay"])+self.processing["decay"]*prev_recent_categories),
+      "cumulative_categories":np.array(prev_output_categories+prev_cumulative_categories),
       "term":term_vec,
       "chamber":chamber_vec
     }
-    return np.concat(list(out_dict.values()))
+    return np.concatenate([out_dict["recent_generics"],out_dict["cumulative_generics"],out_dict["recent_categories"],out_dict["cumulative_categories"],out_dict["term"],out_dict["chamber"]])
 
   # creates input vector normalized
-  def create_input_vector(self,decay=2/3,prev_input_vector=None,prev_output_vector=None,term=None,chamber=None,min_term=111,n_terms=9):
-    out=self.create_input_vector_unnormalized(decay,prev_input_vector,prev_output_vector,term,chamber)/self.scale_factors
+  def create_input_vector(self,prev_input_vector=None,prev_output_vector=None,term=None,chamber=None,min_term=111,n_terms=9):
+    out=self.create_input_vector_unnormalized(prev_input_vector,prev_output_vector,term,chamber)/self.scale_factors
     return out
   
   # create vectors for all rows in the dataset
@@ -93,7 +94,7 @@ class CreateInputsOutputs():
     output_vecs=[]
     for bill in bills:
       for i,row in bill.iterrows():
-        input_vec = self.create_input_vector_unnormalized(self.processing["decay"],input_vec,output_vec,row["term"],row["chamber"],self.processing["min_term"],self.processing["n_terms"])
+        input_vec = self.create_input_vector_unnormalized(input_vec,output_vec,row["term"],row["chamber"],self.processing["min_term"],self.processing["n_terms"])
         output_vec = self.create_output_vector(row["generic"],row["categories"])
         input_vecs.append(input_vec)
         output_vecs.append(output_vec)
@@ -112,7 +113,7 @@ class CreateInputsOutputs():
 if __name__=="__main__":
 
   parser = argparse.ArgumentParser(description="prepare data with generics")
-  parser.add_argument("-d","--preprocessing_dir",type=str,default=".//Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
   parser.add_argument("-i","--inference_dir",default=None,type=str, help="the directory for the data required for inference.defaults to preprocessing_dir/inference")
   
   parser.add_argument("--decay_factor",type=float,default=2/3,help="the factor by which the previous generics decay for recent_generics vectors")
@@ -160,8 +161,8 @@ if __name__=="__main__":
 
   input_output_creator = CreateInputsOutputs(inference_dir)
   input_vecs,output_vecs = input_output_creator.vectors_by_bill(data)
-  input_vecs=np.concat(input_vecs)
-  output_vecs=np.concat(output_vecs)
+  input_vecs=np.stack(input_vecs,axis=0)
+  output_vecs=np.stack(output_vecs,axis=0)
   np.save(os.path.join(args.preprocessing_dir,"input_vectors"),input_vecs)
   np.save(os.path.join(args.preprocessing_dir,"output_vectors"),output_vecs)
 

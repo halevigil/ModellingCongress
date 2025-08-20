@@ -11,9 +11,9 @@ class TestActionDataset:
     """Create a sample dataframe for testing ActionDataset"""
     data = {
       'recent_generics': [np.array([1, 2, 3]), np.array([4, 5, 6])],
-      'cum_prev_generics': [np.array([0.1, 0.2, 0.3]), np.array([0.3, 0.4, 0.5])],
+      'cumulative_generics': [np.array([0.1, 0.2, 0.3]), np.array([0.3, 0.4, 0.5])],
       'recent_categories': [np.array([1, 0, 1]), np.array([0, 1, 0])],
-      'cum_prev_categories': [np.array([0.5, 0.6, 0.7]), np.array([0.7, 0.8, 0.9])],
+      'cumulative_categories': [np.array([0.5, 0.6, 0.7]), np.array([0.7, 0.8, 0.9])],
       'term': [np.array([1, 0]), np.array([0, 1])],
       'chamber': [np.array([1]), np.array([0])],
       'output_generic': [np.array([0, 1, 0]), np.array([1, 0, 1])],
@@ -33,9 +33,9 @@ class TestActionDataset:
     dataset = ActionDataset(sample_dataframe)
     expected_input_0 = np.concatenate([
       np.array([1, 2, 3]),  # recent_generics
-      np.array([0.1, 0.2, 0.3]),  # cum_prev_generics
+      np.array([0.1, 0.2, 0.3]),  # cumulative_generics
       np.array([1, 0, 1]),  # recent_categories
-      np.array([0.5, 0.6, 0.7]),  # cum_prev_categories
+      np.array([0.5, 0.6, 0.7]),  # cumulative_categories
       np.array([1, 0]),  # term
       np.array([1])  # chamber
     ])
@@ -71,9 +71,9 @@ class TestActionDataset:
     """Test dataset with different array sizes"""
     data = {
       'recent_generics': [np.array([1, 2]), np.array([3, 4])],
-      'cum_prev_generics': [np.array([0.1,3]), np.array([0.2,4])],
+      'cumulative_generics': [np.array([0.1,3]), np.array([0.2,4])],
       'recent_categories': [np.array([1]), np.array([0])],
-      'cum_prev_categories': [np.array([0.5]), np.array([0.6])],
+      'cumulative_categories': [np.array([0.5]), np.array([0.6])],
       'term': [np.array([1]), np.array([0])],
       'chamber': [np.array([1]), np.array([0])],
       'output_generic': [np.array([0, 1]), np.array([1, 0])],

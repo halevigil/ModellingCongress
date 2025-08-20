@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 import torch
 import torch.nn.functional as F
 import json
+import dotenv
+dotenv.load_dotenv()
 from typing import List, Dict, Tuple
 from inference import load_model,predict_action_from_seq
 import os
@@ -151,7 +153,7 @@ class CongressionalActionPredictor:
         return action_description in self.action_descriptions
 
 # Initialize the predictor
-predictor = CongressionalActionPredictor("/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight1e-05_batch256/epoch120.pt","/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
+predictor = CongressionalActionPredictor(model_path="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight1e-05_batch256/epoch145.pt",inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
 
 def get_current_sequence():
     """Get the current action sequence from session"""
