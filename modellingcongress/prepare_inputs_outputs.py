@@ -108,11 +108,11 @@ class CreateInputsOutputs():
     return input_vecs,output_vecs
     
   def vector_to_probabilities(self,vecs):
-    return {self.generics[i]:vecs[i] for i in range(len(self.generics))},{self.categories[i]:vecs[i+len(self.generics)] for i in range(len(self.categories))}
+    return {self.generics[i]:float(vecs[i]) for i in range(len(self.generics))},{self.categories[i]:vecs[i+len(self.generics)] for i in range(len(self.categories))}
 if __name__=="__main__":
 
   parser = argparse.ArgumentParser(description="prepare data with generics")
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default=".//Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
   parser.add_argument("-i","--inference_dir",default=None,type=str, help="the directory for the data required for inference.defaults to preprocessing_dir/inference")
   
   parser.add_argument("--decay_factor",type=float,default=2/3,help="the factor by which the previous generics decay for recent_generics vectors")

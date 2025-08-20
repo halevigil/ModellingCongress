@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pandas as pd
 import torch
-from modellingcongress.prediction_model import ActionDataset
+from prediction_model import ActionDataset
 
 class TestActionDataset:
   

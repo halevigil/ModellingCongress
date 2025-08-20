@@ -10,7 +10,7 @@ import openai
 import time
 import argparse
 import re
-from modellingcongress.make_generics import edit_distance_below
+from make_generics import edit_distance_below
 from IPython.display import display
 
 def llm_input(generic_names):
@@ -247,7 +247,7 @@ def create_refinement_map(actions,dir):
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description="uses llm to refine manual generics")
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default=".//Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
   parser.add_argument("--batch_size",type=int,default=750)
   parser.add_argument("--overwrite",action="store_true")
   parser.add_argument("--batch_is",nargs="*")

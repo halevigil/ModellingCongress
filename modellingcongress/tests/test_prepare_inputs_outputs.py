@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from modellingcongress.prepare_inputs_outputs import (
+from prepare_inputs_outputs import (
   create_next_vector,
   create_next_vector_unnormalized,
   create_vectors_bill_unnormalized,

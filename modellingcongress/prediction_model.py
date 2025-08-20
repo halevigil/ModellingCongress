@@ -125,7 +125,7 @@ if __name__=="__main__":
 
   
   parser = argparse.ArgumentParser()
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default=".//Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
   parser.add_argument("--lr",type=float,default=3e-4,help="learning rate")
   parser.add_argument("--batch_size",type=int,default=256,help="batch size")
   parser.add_argument("--lasso_weight",type=float,default=1e-5,help="weight of lasso loss")

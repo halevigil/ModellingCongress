@@ -1,146 +1,335 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import torch
 import torch.nn.functional as F
 import json
 from typing import List, Dict, Tuple
+from inference import load_model,predict_action_from_seq
 import os
+from urllib.parse import quote, unquote
 
 app = Flask(__name__)
+app.secret_key = 'your-secret-key-change-in-production'  # Change this in production!
 
 class CongressionalActionPredictor:
     """
     Wrapper class for your PyTorch model that predicts congressional actions.
     Replace this with your actual model implementation.
     """
-    def __init__(self, model_path=None, action_vocab_path=None):
+    def __init__(self, model_path=None, inference_dir=None):
         # Load your model here
         # self.model = torch.load(model_path) if model_path else None
-        self.model = None  # Placeholder - replace with your actual model
-        
-        # Load action vocabulary - mapping from action IDs to human-readable descriptions
-        if action_vocab_path and os.path.exists(action_vocab_path):
-            with open(action_vocab_path, 'r') as f:
-                self.action_vocab = json.load(f)
+        if model_path:
+            self.model = load_model(model_path)  # Placeholder - replace with your actual model
         else:
-            # Placeholder vocabulary - replace with your actual action categories
-            self.action_vocab = {
-                0: "Bill Introduction - Healthcare Reform",
-                1: "Committee Hearing - Budget Committee",
-                2: "Floor Vote - Infrastructure Bill",
-                3: "Amendment Proposal - Tax Reform",
-                4: "Subcommittee Review - Environmental Policy",
-                5: "Conference Committee - Defense Authorization",
-                6: "Final Passage - Education Funding",
-                7: "Presidential Veto - Immigration Reform",
-                8: "Override Vote - Climate Change Bill",
-                9: "Markup Session - Social Security Reform",
-                # Add more actions as needed
-            }
+            self.model=None
+        self.inference_dir=inference_dir
+        # Load action vocabulary - mapping from descriptions to any additional metadata
+        if inference_dir and os.path.exists(inference_dir):
+            with open(os.path.join(inference_dir,"generics.json"), 'r') as f:
+                self.action_descriptions = json.load(f)
+        else:
+            # Placeholder vocabulary - list of unique action descriptions
+            self.action_descriptions = [
+                "Bill Introduction - Healthcare Reform Act",
+                "Committee Hearing - Ways and Means Committee",
+                "Floor Vote - Infrastructure Investment Bill",
+                "Amendment Proposal - Tax Code Section 501",
+                "Subcommittee Review - Environmental Policy",
+                "Conference Committee - Defense Authorization",
+                "Final Passage - Education Funding Bill",
+                "Presidential Veto - Immigration Reform Act",
+                "Override Vote - Climate Change Legislation",
+                "Markup Session - Social Security Reform",
+                "Bill Introduction - Veterans Affairs Reform",
+                "Committee Hearing - Judiciary Committee",
+                "Floor Vote - Trade Agreement Ratification",
+                "Amendment Proposal - Healthcare Expansion",
+                "Subcommittee Review - Technology Policy",
+                "Conference Committee - Budget Reconciliation",
+                "Final Passage - Criminal Justice Reform",
+                "Presidential Signature - Infrastructure Bill",
+                "Override Vote - Tax Reform Legislation",
+                "Markup Session - Agricultural Policy",
+                "Bill Introduction - Clean Energy Investment",
+                "Committee Hearing - Foreign Relations Committee",
+                "Floor Vote - Minimum Wage Increase",
+                "Amendment Proposal - Privacy Protection Act",
+                "Subcommittee Review - Financial Services",
+                "Conference Committee - Transportation Authorization",
+                "Final Passage - Student Loan Reform",
+                "Presidential Veto - Corporate Tax Changes",
+                "Override Vote - Voting Rights Protection",
+                "Markup Session - Housing Policy Reform"
+            ]
         
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if self.model:
             self.model.to(self.device)
             self.model.eval()
     
-    def predict_next_actions(self, action_sequence: List[int]) -> List[Tuple[int, float, str]]:
+    def predict_next_actions(self, action_sequence: List[str]) -> List[Tuple[str, float]]:
         """
         Given a sequence of congressional actions, predict probabilities for next actions.
         
         Args:
-            action_sequence: List of action IDs representing the sequence so far
+            action_sequence: List of action descriptions representing the sequence so far
             
         Returns:
-            List of tuples: (action_id, probability, description)
+            List of tuples: (action_description, probability)
         """
         if not self.model:
             # Placeholder predictions for demo - replace with actual model inference
             import random
+            import hashlib
+            
+            # Use hash of sequence for deterministic but varied results
+            sequence_hash = hashlib.md5(''.join(action_sequence).encode()).hexdigest()
+            random.seed(int(sequence_hash[:8], 16))
+            
             predictions = []
-            for action_id, description in self.action_vocab.items():
-                prob = random.random()
-                predictions.append((action_id, prob, description))
+            for description in self.action_descriptions:
+                # Create somewhat realistic probability distribution
+                base_prob = random.uniform(0.01, 0.15)
+                
+                # Make some actions more likely based on sequence context
+                if len(action_sequence) > 0:
+                    last_action = action_sequence[-1]
+                    
+                    # Increase probability for related actions
+                    if any(keyword in description.lower() and keyword in last_action.lower() 
+                           for keyword in ['bill', 'committee', 'vote', 'amendment', 'hearing']):
+                        base_prob *= 2
+                    
+                    # Sequential flow: hearing → markup → vote → passage
+                    if 'hearing' in last_action.lower() and 'markup' in description.lower():
+                        base_prob *= 3
+                    elif 'markup' in last_action.lower() and 'vote' in description.lower():
+                        base_prob *= 3
+                    elif 'vote' in last_action.lower() and 'passage' in description.lower():
+                        base_prob *= 3
+                    
+                    # Avoid immediate repetition of same action type
+                    if description == last_action:
+                        base_prob *= 0.1
+                
+                predictions.append((description, base_prob))
+            
+            # Normalize probabilities
+            total_prob = sum(p[1] for p in predictions)
+            predictions = [(desc, prob/total_prob) for desc, prob in predictions]
             
             # Sort by probability (highest first)
             predictions.sort(key=lambda x: x[1], reverse=True)
             return predictions
         
+        return list(predict_action_from_seq(self.model,action_sequence,self.inference_dir)[0].items())
         # Actual model inference code would go here:
+        # You'll need to implement a mapping between action descriptions and model indices
+        # For example:
+        # 
+        # # Convert descriptions to indices for model input
+        # action_indices = [self.description_to_index[desc] for desc in action_sequence]
+        # 
         # with torch.no_grad():
-        #     input_tensor = torch.tensor(action_sequence).unsqueeze(0).to(self.device)
+        #     input_tensor = torch.tensor(action_indices).unsqueeze(0).to(self.device)
         #     logits = self.model(input_tensor)
         #     probabilities = F.softmax(logits[:, -1, :], dim=-1)
         #     
         #     predictions = []
-        #     for action_id, prob in enumerate(probabilities[0]):
-        #         if action_id in self.action_vocab:
-        #             predictions.append((action_id, prob.item(), self.action_vocab[action_id]))
+        #     for idx, prob in enumerate(probabilities[0]):
+        #         if idx in self.index_to_description:
+        #             description = self.index_to_description[idx]
+        #             predictions.append((description, prob.item()))
         #     
         #     predictions.sort(key=lambda x: x[1], reverse=True)
         #     return predictions
         
         return predictions
+    
+    def is_valid_action(self, action_description: str) -> bool:
+        """Check if an action description is valid"""
+        return action_description in self.action_descriptions
 
 # Initialize the predictor
-predictor = CongressionalActionPredictor()
+predictor = CongressionalActionPredictor("/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight1e-05_batch256/epoch120.pt","/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
 
-@app.route('/')
+def get_current_sequence():
+    """Get the current action sequence from session"""
+    sequence = session.get('action_sequence', [])
+    # Handle legacy data or mixed types by converting everything to strings
+    clean_sequence = []
+    for item in sequence:
+        if isinstance(item, str):
+            clean_sequence.append(item)
+        elif isinstance(item, int):
+            # Convert old integer IDs to placeholder descriptions for backwards compatibility
+            clean_sequence.append(f"Legacy Action {item}")
+        else:
+            # Handle any other unexpected types
+            clean_sequence.append(str(item))
+    return clean_sequence
+
+def set_current_sequence(sequence):
+    """Set the current action sequence in session"""
+    # Ensure all items in sequence are strings
+    clean_sequence = [str(item) for item in sequence]
+    session['action_sequence'] = clean_sequence
+
+def filter_predictions(predictions, search_query):
+    """Filter predictions based on search query"""
+    if not search_query:
+        return predictions
+    
+    search_lower = search_query.lower()
+    return [
+        (description, prob) for description, prob in predictions
+        if search_lower in description.lower()
+    ]
+
+def encode_action_description(description):
+    """URL-encode action description for safe use in URLs"""
+    return quote(description, safe='')
+
+def decode_action_description(encoded_description):
+    """URL-decode action description from URL"""
+    return unquote(encoded_description)
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
     """Main page with the interactive tool"""
-    return render_template('index.html')
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    """API endpoint to get predictions for next actions"""
+    search_query = ''
+    error_message = None
+    
+    if request.method == 'POST':
+        search_query = request.form.get('search', '').strip()
+    
     try:
-        data = request.json
-        action_sequence = data.get('sequence', [])
-        search_query = data.get('search', '').lower()
+        # Get current sequence
+        action_sequence = get_current_sequence()
         
         # Get predictions from the model
-        predictions = predictor.predict_next_actions(action_sequence)
+        all_predictions = predictor.predict_next_actions(action_sequence)
         
-        # Filter predictions based on search query if provided
-        if search_query:
-            filtered_predictions = [
-                (action_id, prob, desc) for action_id, prob, desc in predictions
-                if search_query in desc.lower()
-            ]
-        else:
-            filtered_predictions = predictions
+        # Filter predictions based on search query
+        filtered_predictions = filter_predictions(all_predictions, search_query)
         
-        # Format response
-        response = {
-            'predictions': [
-                {
-                    'action_id': action_id,
-                    'probability': round(prob * 100, 2),  # Convert to percentage
-                    'description': desc
-                }
-                for action_id, prob, desc in filtered_predictions
-            ],
+        # Format predictions for display
+        predictions_display = [
+            {
+                'description': description,
+                'encoded_description': encode_action_description(description),
+                'probability': round(prob * 100, 2)
+            }
+            for description, prob in filtered_predictions
+        ]
+        
+        # Get sequence with step numbers
+        sequence_display = [
+            {
+                'step': i + 1,
+                'description': description
+            }
+            for i, description in enumerate(action_sequence)
+        ]
+        
+        # Calculate statistics
+        stats = {
             'sequence_length': len(action_sequence),
-            'total_actions': len(predictions)
+            'total_actions': len(all_predictions),
+            'filtered_predictions': len(filtered_predictions),
+            'top_probability': round(filtered_predictions[0][1] * 100, 2) if filtered_predictions else 0
         }
         
-        return jsonify(response)
+        return render_template('index.html',
+                             predictions=predictions_display,
+                             sequence=sequence_display,
+                             stats=stats,
+                             search_query=search_query,
+                             error_message=error_message)
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_message = f"Error loading predictions: {str(e)}"
+        return render_template('index.html',
+                             predictions=[],
+                             sequence=[],
+                             stats={'sequence_length': 0, 'total_actions': 0, 'filtered_predictions': 0, 'top_probability': 0},
+                             search_query=search_query,
+                             error_message=error_message)
 
-@app.route('/action_info/<int:action_id>')
-def action_info(action_id):
+@app.route('/select_action/<path:encoded_description>')
+def select_action(encoded_description):
+    """Add an action to the sequence"""
+    try:
+        # Decode the action description
+        action_description = decode_action_description(encoded_description)
+        
+        # Validate the action
+        if not predictor.is_valid_action(action_description):
+            flash(f"Invalid action: {action_description}", 'error')
+            return redirect(url_for('index'))
+        
+        # Get current sequence and add new action
+        action_sequence = get_current_sequence()
+        action_sequence.append(action_description)
+        set_current_sequence(action_sequence)
+        
+        flash(f"Added: {action_description}", 'success')
+        
+    except Exception as e:
+        flash(f"Error adding action: {str(e)}", 'error')
+    
+    return redirect(url_for('index'))
+
+@app.route('/undo_action')
+def undo_action():
+    """Remove the last action from the sequence"""
+    try:
+        action_sequence = get_current_sequence()
+        if action_sequence:
+            removed_action = action_sequence.pop()
+            set_current_sequence(action_sequence)
+            flash(f"Removed: {removed_action}", 'info')
+        else:
+            flash("No actions to undo", 'warning')
+            
+    except Exception as e:
+        flash(f"Error undoing action: {str(e)}", 'error')
+    
+    return redirect(url_for('index'))
+
+@app.route('/reset_sequence')
+def reset_sequence():
+    """Clear the entire action sequence"""
+    try:
+        # Clear the session completely to avoid any legacy data issues
+        session.pop('action_sequence', None)
+        set_current_sequence([])
+        flash("Sequence reset", 'info')
+        
+    except Exception as e:
+        flash(f"Error resetting sequence: {str(e)}", 'error')
+    
+    return redirect(url_for('index'))
+
+@app.route('/action_info/<path:encoded_description>')
+def action_info(encoded_description):
     """Get detailed information about a specific action"""
-    if action_id in predictor.action_vocab:
-        return jsonify({
-            'action_id': action_id,
-            'description': predictor.action_vocab[action_id]
-        })
-    else:
-        return jsonify({'error': 'Action not found'}), 404
+    try:
+        action_description = decode_action_description(encoded_description)
+        
+        if predictor.is_valid_action(action_description):
+            flash(f"Action: {action_description}", 'info')
+        else:
+            flash(f"Action not found: {action_description}", 'error')
+            
+    except Exception as e:
+        flash(f"Error retrieving action info: {str(e)}", 'error')
+    
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     # Create templates directory if it doesn't exist
     os.makedirs('templates', exist_ok=True)
     os.makedirs('static', exist_ok=True)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)

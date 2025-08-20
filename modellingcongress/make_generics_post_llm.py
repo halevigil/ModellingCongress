@@ -1,13 +1,13 @@
 import json
 from collections import defaultdict
-from modellingcongress.make_generics import edit_distance_below
-from modellingcongress.clustering_util import cluster
+from make_generics import edit_distance_below
+from clustering_util import cluster
 import argparse
 import os
 
 parser = argparse.ArgumentParser(description="makes generics after llm refinement by combining actions with small edit distance")
 
-parser.add_argument("-d","--preprocessing_dir",type=str,default="./outputs/preprocess0", help="the directory for this preprocessing run")
+parser.add_argument("-d","--preprocessing_dir",type=str,default=".//Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
 parser.add_argument("--threshold",type=float,default=1/7,help="the max value of threshold*max(action1 length,action 2 length) for which the two actions will have the same generic")
 args,unknown = parser.parse_known_args()
 

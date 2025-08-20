@@ -79,12 +79,13 @@
 			.sequence-item {
 				background: linear-gradient(135deg, #74b9ff, #0984e3);
 				color: white;
-				padding: 8px 12px;
-				margin: 5px 0;
+				padding: 12px 15px;
+				margin: 8px 0;
 				border-radius: 6px;
 				font-size: 0.9em;
 				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 				transition: transform 0.2s ease;
+				line-height: 1.4;
 			}
 
 			.sequence-item:hover {
@@ -94,15 +95,31 @@
 			.sequence-item .step-number {
 				font-weight: bold;
 				background: rgba(255, 255, 255, 0.2);
-				padding: 2px 6px;
+				padding: 3px 8px;
 				border-radius: 4px;
-				margin-right: 8px;
+				margin-right: 10px;
+				font-size: 0.8em;
+			}
+
+			.sequence-item .action-description {
+				display: block;
+				margin-top: 5px;
+				font-size: 0.85em;
+				opacity: 0.9;
+			}
+
+			.empty-sequence {
+				color: #6c757d;
+				text-align: center;
+				margin-top: 60px;
+				font-style: italic;
 			}
 
 			.controls {
 				display: flex;
 				gap: 10px;
 				margin-bottom: 20px;
+				flex-wrap: wrap;
 			}
 
 			.btn {
@@ -113,6 +130,9 @@
 				font-weight: 600;
 				transition: all 0.3s ease;
 				font-size: 0.9em;
+				text-decoration: none;
+				display: inline-block;
+				text-align: center;
 			}
 
 			.btn-primary {
@@ -125,23 +145,35 @@
 				color: white;
 			}
 
+			.btn-danger {
+				background: #e74c3c;
+				color: white;
+			}
+
 			.btn:hover {
 				transform: translateY(-2px);
 				box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 			}
 
-			.btn:disabled {
+			.btn:disabled,
+			.btn.disabled {
 				opacity: 0.6;
 				cursor: not-allowed;
 				transform: none;
+				pointer-events: none;
 			}
 
-			.search-container {
+			.search-form {
 				margin-bottom: 20px;
 			}
 
+			.search-container {
+				display: flex;
+				gap: 10px;
+			}
+
 			.search-input {
-				width: 100%;
+				flex: 1;
 				padding: 12px;
 				border: 2px solid #ddd;
 				border-radius: 8px;
@@ -153,6 +185,34 @@
 				outline: none;
 				border-color: #667eea;
 				box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+			}
+
+			.search-btn {
+				background: linear-gradient(135deg, #667eea, #764ba2);
+				color: white;
+				border: none;
+				padding: 12px 24px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: 600;
+				transition: all 0.3s ease;
+			}
+
+			.search-btn:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+			}
+
+			.clear-search {
+				background: #95a5a6;
+				color: white;
+				border: none;
+				padding: 12px 20px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: 600;
+				text-decoration: none;
+				display: inline-block;
 			}
 
 			.predictions-container {
@@ -168,9 +228,17 @@
 				border: 1px solid #e9ecef;
 				border-radius: 8px;
 				margin-bottom: 10px;
-				cursor: pointer;
-				transition: all 0.3s ease;
 				background: linear-gradient(135deg, #f8f9fa, #ffffff);
+				transition: all 0.3s ease;
+			}
+
+			.prediction-link {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				width: 100%;
+				text-decoration: none;
+				color: inherit;
 			}
 
 			.prediction-item:hover {
@@ -188,12 +256,13 @@
 			.prediction-probability {
 				background: linear-gradient(135deg, #667eea, #764ba2);
 				color: white;
-				padding: 5px 12px;
+				padding: 6px 12px;
 				border-radius: 20px;
 				font-weight: bold;
 				font-size: 0.9em;
 				min-width: 60px;
 				text-align: center;
+				margin-left: 15px;
 			}
 
 			.stats {
@@ -231,38 +300,56 @@
 				margin-top: 5px;
 			}
 
-			.loading {
+			.flash-messages {
+				margin-bottom: 20px;
+			}
+
+			.flash-message {
+				padding: 12px 16px;
+				border-radius: 8px;
+				margin-bottom: 10px;
+				font-weight: 500;
+			}
+
+			.flash-success {
+				background: #d4edda;
+				border: 1px solid #c3e6cb;
+				color: #155724;
+			}
+
+			.flash-error {
+				background: #f8d7da;
+				border: 1px solid #f5c6cb;
+				color: #721c24;
+			}
+
+			.flash-info {
+				background: #d1ecf1;
+				border: 1px solid #bee5eb;
+				color: #0c5460;
+			}
+
+			.flash-warning {
+				background: #fff3cd;
+				border: 1px solid #ffeaa7;
+				color: #856404;
+			}
+
+			.no-results {
 				text-align: center;
-				padding: 20px;
+				padding: 40px;
 				color: #6c757d;
+				font-style: italic;
 			}
 
-			.spinner {
-				border: 4px solid #f3f3f3;
-				border-top: 4px solid #667eea;
-				border-radius: 50%;
-				width: 30px;
-				height: 30px;
-				animation: spin 1s linear infinite;
-				margin: 0 auto 10px;
-			}
-
-			@keyframes spin {
-				0% {
-					transform: rotate(0deg);
-				}
-				100% {
-					transform: rotate(360deg);
-				}
-			}
-
-			.error {
+			.error-message {
 				background: #fee;
 				border: 1px solid #fcc;
 				color: #c33;
 				padding: 15px;
 				border-radius: 8px;
 				margin-bottom: 20px;
+				font-weight: 500;
 			}
 
 			@media (max-width: 768px) {
@@ -277,6 +364,20 @@
 				.controls {
 					flex-direction: column;
 				}
+
+				.search-container {
+					flex-direction: column;
+				}
+
+				.prediction-link {
+					flex-direction: column;
+					align-items: flex-start;
+					gap: 10px;
+				}
+
+				.prediction-probability {
+					align-self: flex-end;
+				}
 			}
 		</style>
 	</head>
@@ -290,59 +391,109 @@
 				</p>
 			</div>
 
+			<!-- Flash Messages -->
+			{% if get_flashed_messages() %}
+			<div class="flash-messages">
+				{% for category, message in
+				get_flashed_messages(with_categories=true) %}
+				<div class="flash-message flash-{{ category }}">
+					{{ message }}
+				</div>
+				{% endfor %}
+			</div>
+			{% endif %}
+
+			<!-- Error Message -->
+			{% if error_message %}
+			<div class="error-message">
+				<strong>Error:</strong> {{ error_message }}
+			</div>
+			{% endif %}
+
 			<div class="main-content">
 				<div class="sequence-panel">
 					<h2>Action Sequence</h2>
-					<div class="sequence-display" id="sequenceDisplay">
-						<p
-							style="
-								color: #6c757d;
-								text-align: center;
-								margin-top: 80px;
-							"
-						>
+					<div class="sequence-display">
+						{% if sequence %} {% for item in sequence %}
+						<div class="sequence-item">
+							<span class="step-number">{{ item.step }}</span>
+							{{ item.description }}
+						</div>
+						{% endfor %} {% else %}
+						<div class="empty-sequence">
 							No actions selected yet. Choose a predicted action
 							to start building the sequence.
-						</p>
+						</div>
+						{% endif %}
 					</div>
 					<div class="controls">
-						<button
+						{% if sequence %}
+						<a
+							href="{{ url_for('undo_action') }}"
 							class="btn btn-secondary"
-							id="undoBtn"
-							onclick="undoLastAction()"
-							disabled
 						>
 							Undo Last Action
-						</button>
-						<button
-							class="btn btn-secondary"
-							id="resetBtn"
-							onclick="resetSequence()"
+						</a>
+						{% else %}
+						<span class="btn btn-secondary disabled">
+							Undo Last Action
+						</span>
+						{% endif %}
+						<a
+							href="{{ url_for('reset_sequence') }}"
+							class="btn btn-danger"
 						>
 							Reset Sequence
-						</button>
+						</a>
 					</div>
 				</div>
 
 				<div class="predictions-panel">
 					<h2>Predicted Next Actions</h2>
-					<div class="search-container">
-						<input
-							type="text"
-							id="searchInput"
-							class="search-input"
-							placeholder="Search actions..."
-							onkeyup="debounceSearch()"
-						/>
-					</div>
-					<div
-						id="predictionsContainer"
-						class="predictions-container"
-					>
-						<div class="loading">
-							<div class="spinner"></div>
-							Loading initial predictions...
+					<form method="POST" class="search-form">
+						<div class="search-container">
+							<input
+								type="text"
+								name="search"
+								class="search-input"
+								placeholder="Search actions..."
+								value="{{ search_query or '' }}"
+							/>
+							<button type="submit" class="search-btn">
+								Search
+							</button>
+							{% if search_query %}
+							<a
+								href="{{ url_for('index') }}"
+								class="clear-search"
+								>Clear</a
+							>
+							{% endif %}
 						</div>
+					</form>
+
+					<div class="predictions-container">
+						{% if predictions %} {% for pred in predictions %}
+						<div class="prediction-item">
+							<a
+								href="{{ url_for('select_action', encoded_description=pred.encoded_description) }}"
+								class="prediction-link"
+							>
+								<div class="prediction-description">
+									{{ pred.description }}
+								</div>
+								<div class="prediction-probability">
+									{{ pred.probability }}%
+								</div>
+							</a>
+						</div>
+						{% endfor %} {% else %}
+						<div class="no-results">
+							{% if search_query %} No actions found matching "{{
+							search_query }}". {% else %} No predictions
+							available. {% endif %}
+						</div>
+						{% endif %}
 					</div>
 				</div>
 			</div>
@@ -350,219 +501,29 @@
 			<div class="stats">
 				<div class="stats-grid">
 					<div class="stat-item">
-						<div class="stat-number" id="sequenceLength">0</div>
+						<div class="stat-number">
+							{{ stats.sequence_length }}
+						</div>
 						<div class="stat-label">Actions in Sequence</div>
 					</div>
 					<div class="stat-item">
-						<div class="stat-number" id="totalPredictions">0</div>
+						<div class="stat-number">{{ stats.total_actions }}</div>
 						<div class="stat-label">Total Possible Actions</div>
 					</div>
 					<div class="stat-item">
-						<div class="stat-number" id="filteredPredictions">
-							0
+						<div class="stat-number">
+							{{ stats.filtered_predictions }}
 						</div>
 						<div class="stat-label">Filtered Results</div>
 					</div>
 					<div class="stat-item">
-						<div class="stat-number" id="topProbability">0%</div>
+						<div class="stat-number">
+							{{ stats.top_probability }}%
+						</div>
 						<div class="stat-label">Highest Probability</div>
 					</div>
 				</div>
 			</div>
 		</div>
-
-		<script>
-			let actionSequence = [];
-			let allPredictions = [];
-			let searchTimeout;
-
-			// Initialize the app
-			document.addEventListener("DOMContentLoaded", function () {
-				loadPredictions();
-			});
-
-			// Load predictions from the server
-			async function loadPredictions(searchQuery = "") {
-				try {
-					const response = await fetch("/predict", {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({
-							sequence: actionSequence,
-							search: searchQuery,
-						}),
-					});
-
-					const data = await response.json();
-
-					if (data.error) {
-						showError(data.error);
-						return;
-					}
-
-					allPredictions = data.predictions;
-					displayPredictions(data.predictions);
-					updateStats(data);
-				} catch (error) {
-					showError("Failed to load predictions: " + error.message);
-				}
-			}
-
-			// Display predictions in the UI
-			function displayPredictions(predictions) {
-				const container = document.getElementById(
-					"predictionsContainer"
-				);
-
-				if (predictions.length === 0) {
-					container.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #6c757d;">
-                        No actions found matching your search.
-                    </div>
-                `;
-					return;
-				}
-
-				container.innerHTML = predictions
-					.map(
-						(pred) => `
-                <div class="prediction-item" onclick="selectAction(${
-					pred.action_id
-				}, '${pred.description.replace(/'/g, "\\'")}')">
-                    <div class="prediction-description">${
-						pred.description
-					}</div>
-                    <div class="prediction-probability">${
-						pred.probability
-					}%</div>
-                </div>
-            `
-					)
-					.join("");
-			}
-
-			// Select an action and add it to the sequence
-			async function selectAction(actionId, description) {
-				actionSequence.push(description);
-				updateSequenceDisplay();
-
-				// Show loading state
-				document.getElementById("predictionsContainer").innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Predicting next actions...
-                </div>
-            `;
-
-				// Clear search
-				document.getElementById("searchInput").value = "";
-
-				// Load new predictions
-				await loadPredictions();
-
-				// Update controls
-				document.getElementById("undoBtn").disabled = false;
-			}
-
-			// Update the sequence display
-			function updateSequenceDisplay() {
-				const container = document.getElementById("sequenceDisplay");
-
-				if (actionSequence.length === 0) {
-					container.innerHTML = `
-                    <p style="color: #6c757d; text-align: center; margin-top: 80px;">
-                        No actions selected yet. Choose a predicted action to start building the sequence.
-                    </p>
-                `;
-					return;
-				}
-
-				// For demo purposes, we'll use placeholder descriptions
-				// In a real implementation, you'd fetch the actual descriptions
-				const sequenceHtml = actionSequence
-					.map(
-						(description, index) => `
-                <div class="sequence-item">
-                    <span class="step-number">${index + 1}</span>
-                    ${description}
-                </div>
-            `
-					)
-					.join("");
-
-				container.innerHTML = sequenceHtml;
-			}
-
-			// Undo the last action
-			async function undoLastAction() {
-				if (actionSequence.length === 0) return;
-
-				actionSequence.pop();
-				updateSequenceDisplay();
-
-				if (actionSequence.length === 0) {
-					document.getElementById("undoBtn").disabled = true;
-				}
-
-				// Clear search
-				document.getElementById("searchInput").value = "";
-
-				// Reload predictions
-				await loadPredictions();
-			}
-
-			// Reset the entire sequence
-			async function resetSequence() {
-				actionSequence = [];
-				updateSequenceDisplay();
-				document.getElementById("undoBtn").disabled = true;
-
-				// Clear search
-				document.getElementById("searchInput").value = "";
-
-				// Reload predictions
-				await loadPredictions();
-			}
-
-			// Debounced search function
-			function debounceSearch() {
-				clearTimeout(searchTimeout);
-				searchTimeout = setTimeout(() => {
-					const query = document.getElementById("searchInput").value;
-					loadPredictions(query);
-				}, 300);
-			}
-
-			// Update statistics display
-			function updateStats(data) {
-				document.getElementById("sequenceLength").textContent =
-					actionSequence.length;
-				document.getElementById("totalPredictions").textContent =
-					data.total_actions;
-				document.getElementById("filteredPredictions").textContent =
-					data.predictions.length;
-
-				const topProb =
-					data.predictions.length > 0
-						? data.predictions[0].probability
-						: 0;
-				document.getElementById("topProbability").textContent =
-					topProb + "%";
-			}
-
-			// Show error message
-			function showError(message) {
-				const container = document.getElementById(
-					"predictionsContainer"
-				);
-				container.innerHTML = `
-                <div class="error">
-                    <strong>Error:</strong> ${message}
-                </div>
-            `;
-			}
-		</script>
 	</body>
 </html>
