@@ -9,4 +9,3 @@ modellingcongress/embedding.py
 .vscode
 __pycache__
 web-app/*
-flask-app
