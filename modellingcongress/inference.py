@@ -10,12 +10,10 @@ import onnxruntime as ort
 
 if __package__:
     # Relative imports for package usage
-  from .prediction_model import ActionDataset
   from .make_generics import edit_distance_below
   from .prepare_inputs_outputs import CreateInputsOutputs
   from .categorize import categorize
 else:
-  from prediction_model import ActionDataset
   from make_generics import edit_distance_below
   from prepare_inputs_outputs import CreateInputsOutputs
   from categorize import categorize
