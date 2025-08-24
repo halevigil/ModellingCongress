@@ -5,13 +5,14 @@ import json
 import dotenv
 dotenv.load_dotenv()
 from typing import List, Dict, Tuple
-from modellingcongress.inference import load_model,predict_action_from_seq
+from ..modellingcongress.inference import load_model,predict_action_from_seq
 import os
 from urllib.parse import quote, unquote
 
+
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'  # Change this in production!
-
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000
 class CongressionalActionPredictor:
     """
     Wrapper class for your PyTorch model that predicts congressional actions.
