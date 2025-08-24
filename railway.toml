@@ -1,5 +1,5 @@
 [build]
 builder = "NIXPACKS"
 
-[start]
-cmd = "gunicorn flask-app.app:app"
+[deploy]
+startCommand = "gunicorn flask-app.app:app"
