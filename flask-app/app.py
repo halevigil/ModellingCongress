@@ -1,6 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
-import torch
-import torch.nn.functional as F
 import json
 import dotenv
 dotenv.load_dotenv()
