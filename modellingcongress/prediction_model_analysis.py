@@ -30,7 +30,7 @@ from collections import defaultdict
 import torch
 import itertools
 # model.load_state_dict(torch.load("./../outputs/models/08-04_lr1e-5_beta.01/epoch99.pt")["model"])
-weights = torch.load("/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight1e-05_batch256/epoch145.pt")["model"]["weight"]
+weights = torch.load("/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight0e+00_batch256/epoch115.pt")["model"]["weight"]
 weights = weights.detach().numpy() 
 print(weights.shape)
 recent_chains=[]
@@ -51,10 +51,10 @@ for term in range(n_terms):
   for j,generic2 in enumerate(generics+categories):
     term_chains.append((float(weights[j][term+2*len(generics)+2*len(categories)]),str(term*2+2009)+"-"+str(term*2+2010),generic2))
 chamber_chains=[]
-for j,generic in enumerate(chamber_chains):
-    chamber_chains.append((float(weights[j][1+term+2*len(generics)+2*len(categories)+n_terms]),"House",generic))
-for j,generic in enumerate(chamber_chains):
-    chamber_chains.append((float(weights[j][2+term+2*len(generics)+2*len(categories)+n_terms]),"Senate",generic))
+for j,generic in enumerate(generics+categories):
+    chamber_chains.append((float(weights[j][2*len(generics)+2*len(categories)+n_terms]),"House",generic))
+for j,generic in enumerate(generics+categories):
+    chamber_chains.append((float(weights[j][1+2*len(generics)+2*len(categories)+n_terms]),"Senate",generic))
 all_chains = recent_chains+cumulative_chains+term_chains+chamber_chains
 
 def display_chains(chains,name=""):
@@ -67,7 +67,7 @@ def display_chains(chains,name=""):
 if __name__=="__main__":
   # display_chains(recent_plus_s_chains,"recent+cum:")
   display_chains(recent_chains,"recent:")
-  display_chains(cumulative_chains,"cum:")
+  display_chains(cumulative_chains,"cumulative:")
 
   display_chains(term_chains,"terms:")
   display_chains(chamber_chains,"chamber:")

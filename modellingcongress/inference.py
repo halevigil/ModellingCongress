@@ -1,4 +1,3 @@
-
 import torch
 from torch.utils.data import DataLoader
 from torch.nn.functional import softmax,sigmoid
@@ -6,15 +5,22 @@ import json
 import dotenv
 import openai
 # from llm_refinement import llm_input
-from prediction_model import ActionDataset
-from make_generics import edit_distance_below
-from prepare_inputs_outputs import CreateInputsOutputs
-from categorize import categorize
+
+if __package__:
+    # Relative imports for package usage
+  from .prediction_model import ActionDataset
+  from .make_generics import edit_distance_below
+  from .prepare_inputs_outputs import CreateInputsOutputs
+  from .categorize import categorize
+else:
+  from prediction_model import ActionDataset
+  from make_generics import edit_distance_below
+  from prepare_inputs_outputs import CreateInputsOutputs
+  from categorize import categorize
 import openai
 import numpy as np
 import os
 import pandas as pd
-from categorize import categorize
 # from llm_refinement import create_refinements
 dotenv.load_dotenv()
 
@@ -39,8 +45,10 @@ def predict_action_from_seq(model,prev_actions,inference_dir,prev_input_vector=N
   prev_categories = [categorize(action) for action in prev_actions]
   input_vector = prev_input_vector or input_output_creator.create_input_vector()
   for generic,categories in zip(prev_generics,prev_categories):
-    input_vector = input_output_creator.create_input_vector(prev_input_vector=prev_input_vector,prev_output_vector=input_output_creator.create_output_vector(generic,categories),chamber=chamber,term=term)
-  input_vector = torch.from_numpy(input_vector).float() 
+    prev_output = input_output_creator.create_output_vector(generic,categories)
+    input_vector = input_output_creator.create_input_vector(prev_input_vector=input_vector,prev_output_vector=prev_output,chamber=chamber,term=term)
+
+  input_vector = torch.from_numpy(input_vector).float()
   with torch.no_grad():
     output=model(input_vector)
   output[:len(input_output_creator.get_generics())]=torch.nn.functional.softmax(output[:len(input_output_creator.get_generics())],dim=0)
@@ -69,10 +77,13 @@ def predict_action_from_last(model,action,inference_dir,prev_input_vector=None,n
 def load_model(model_path):
   state_dict = torch.load(model_path)
   model=torch.nn.Linear(state_dict["model"]["weight"].shape[1],state_dict["model"]["weight"].shape[0])
+  model.load_state_dict(state_dict["model"])
   return model
 if __name__=="__main__":
-  predicted_generics,predicted_categories = predict_action_from_seq(load_model("/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight1e-05_batch256/epoch120.pt"),prev_actions=["Cloture motion on the motion to proceed to measure presented in Senate."],inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
-  print(sorted(predicted_categories.items(),key=lambda x:x[1],reverse=True))
+  predicted_generics,predicted_categories = predict_action_from_seq(load_model("/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight0e+00_batch256/epoch115.pt"),
+                                                                    prev_actions=["Presented to the President."],
+                                                                    inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
+  display(sorted(predicted_generics.items(),key=lambda x:x[1],reverse=True))
   
 
 # def predict_bill(bill_df,refine_first=True):

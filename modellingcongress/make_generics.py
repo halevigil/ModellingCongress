@@ -3,7 +3,10 @@ import pandas as pd
 import re
 import json
 import numpy as np
-from clustering_util import cluster
+if __package__:
+  from .clustering_util import cluster
+else:
+  from clustering_util import cluster
 import argparse
 import os
 

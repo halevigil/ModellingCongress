@@ -10,8 +10,11 @@ import openai
 import time
 import argparse
 import re
-from make_generics import edit_distance_below
-from IPython.display import display
+
+if __package__:
+  from .make_generics import edit_distance_below
+else:
+  from make_generics import edit_distance_below
 
 def llm_input(generic_names):
   return f"""I am analyzing a dataset full of Congressional actions. I want to refine each action to clean them up and remove the names and descriptions of congresspeople, bills, amendments, times, votes, rules and committees.

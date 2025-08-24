@@ -1,0 +1,2 @@
+[start]
+cmd = "gunicorn flask-app.app:app"

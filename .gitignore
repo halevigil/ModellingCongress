@@ -9,3 +9,4 @@ modellingcongress/embedding.py
 .vscode
 __pycache__
 web-app/*
+node_modules

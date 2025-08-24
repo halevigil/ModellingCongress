@@ -1,7 +1,12 @@
 import json
 from collections import defaultdict
-from make_generics import edit_distance_below
-from clustering_util import cluster
+if __package__:
+  from .make_generics import edit_distance_below
+  from .clustering_util import cluster
+else:
+  from make_generics import edit_distance_below
+  from clustering_util import cluster
+
 import argparse
 import os
 

@@ -5,7 +5,7 @@ import json
 import dotenv
 dotenv.load_dotenv()
 from typing import List, Dict, Tuple
-from inference import load_model,predict_action_from_seq
+from modellingcongress.inference import load_model,predict_action_from_seq
 import os
 from urllib.parse import quote, unquote
 
@@ -153,7 +153,7 @@ class CongressionalActionPredictor:
         return action_description in self.action_descriptions
 
 # Initialize the predictor
-predictor = CongressionalActionPredictor(model_path="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight1e-05_batch256/epoch145.pt",inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
+predictor = CongressionalActionPredictor(model_path="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight0e+00_batch256/epoch115.pt",inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
 
 def get_current_sequence():
     """Get the current action sequence from session"""
@@ -163,9 +163,6 @@ def get_current_sequence():
     for item in sequence:
         if isinstance(item, str):
             clean_sequence.append(item)
-        elif isinstance(item, int):
-            # Convert old integer IDs to placeholder descriptions for backwards compatibility
-            clean_sequence.append(f"Legacy Action {item}")
         else:
             # Handle any other unexpected types
             clean_sequence.append(str(item))
@@ -216,14 +213,14 @@ def index():
         filtered_predictions = filter_predictions(all_predictions, search_query)
         
         # Format predictions for display
-        predictions_display = [
+        predictions_display = sorted([
             {
                 'description': description,
                 'encoded_description': encode_action_description(description),
                 'probability': round(prob * 100, 2)
             }
             for description, prob in filtered_predictions
-        ]
+        ],key=lambda x:x["probability"],reverse=True)
         
         # Get sequence with step numbers
         sequence_display = [
