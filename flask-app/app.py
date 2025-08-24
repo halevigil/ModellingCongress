@@ -5,7 +5,7 @@ import json
 import dotenv
 dotenv.load_dotenv()
 from typing import List, Dict, Tuple
-from ..modellingcongress.inference import load_model,predict_action_from_seq
+from modellingcongress.inference import predict_action_from_seq
 import os
 from urllib.parse import quote, unquote
 
@@ -18,13 +18,10 @@ class CongressionalActionPredictor:
     Wrapper class for your PyTorch model that predicts congressional actions.
     Replace this with your actual model implementation.
     """
-    def __init__(self, model_path=None, inference_dir=None):
+    def __init__(self, model=None, inference_dir=None):
         # Load your model here
         # self.model = torch.load(model_path) if model_path else None
-        if model_path:
-            self.model = load_model(model_path)  # Placeholder - replace with your actual model
-        else:
-            self.model=None
+        self.model=model
         self.inference_dir=inference_dir
         # Load action vocabulary - mapping from descriptions to any additional metadata
         if inference_dir and os.path.exists(inference_dir):
@@ -65,10 +62,10 @@ class CongressionalActionPredictor:
                 "Markup Session - Housing Policy Reform"
             ]
         
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        if self.model:
-            self.model.to(self.device)
-            self.model.eval()
+        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # # if self.model:
+        # #     self.model.to(self.device)
+        # #     self.model.eval()
     
     def predict_next_actions(self, action_sequence: List[str]) -> List[Tuple[str, float]]:
         """
@@ -154,7 +151,7 @@ class CongressionalActionPredictor:
         return action_description in self.action_descriptions
 
 # Initialize the predictor
-predictor = CongressionalActionPredictor(model_path="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/models/lr3e-04_lassoweight0e+00_batch256/epoch115.pt",inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
+predictor = CongressionalActionPredictor("lr3e-04_lassoweight0e+00_batch256",inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
 
 def get_current_sequence():
     """Get the current action sequence from session"""
