@@ -13,6 +13,6 @@ https://modellingcongress-hidden-breeze-6910.fly.dev/
 If you'd like to build the model youself:
 
 1. Download the dataset from each congress term, and unzip them all into the data folder, like so:
-   ![](data_display.png)
+   <img src="data_display.png" alt="Alt Text" width="300" height="200">
 2. Run run.py with argument --preprocessing_dir to the preprocessing directory that you'd like. Likely, it will be something like outputs/preprocess
    xs
