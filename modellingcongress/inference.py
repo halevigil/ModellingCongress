@@ -6,7 +6,11 @@ from scipy.special import softmax,expit
 
 import onnxruntime as ort
 
-# from llm_refinement import llm_input
+if __package__:
+  from .llm_refinement import llm_input
+else:
+  from llm_refinement import llm_input
+
 
 if __package__:
     # Relative imports for package usage

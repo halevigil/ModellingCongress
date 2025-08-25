@@ -17,6 +17,7 @@ import sklearn
 import argparse
 
 
+
 class ActionDataset(torch.utils.data.Dataset):
   def __init__(self,inputs,outputs,generics_len):
     self.inputs=inputs
@@ -37,8 +38,8 @@ class ActionDataset(torch.utils.data.Dataset):
     return self.inputs[idx],self.outputs[idx]
 
 
-
-def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_size=256,continue_from=None,run_name=None,override_previous=False,end_epoch=300,n_epochs=None):
+# trains the model with the given hyperparameters
+def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_size=256,continue_from=None,run_name=None,override_previous=False,end_epoch=300,n_epochs=None,auto_stop=True):
   hyperparams={"lr":lr,"lasso_weight":lasso_weight,"batch size":batch_size}
   print("hyperparameters:",hyperparams)
   with open(os.path.join(inference_dir,"generics.json"),"r") as file:
@@ -80,7 +81,7 @@ def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_
           line+="\n"
   for epoch in prev_epochs:
     if continue_from and epoch>continue_from:
-      os.remove(os.path.join(folder,f"epoch{continue_from}.pt"))
+      os.remove(os.path.join(folder,f"epoch{epoch}.pt"))
   pred_generics_loss_fn = torch.nn.CrossEntropyLoss()
   pred_categories_loss_fn = torch.nn.BCEWithLogitsLoss()
   if not os.path.isdir(folder):
@@ -113,7 +114,7 @@ def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_
         pred_generics_loss += pred_generics_loss_fn(pred[:ds.generics_len()],output[:ds.generics_len()])
         pred_categories_loss += pred_categories_loss_fn(pred[ds.generics_len():],output[ds.generics_len():])
       pred_generics_loss/=len(val_loader)
-      pred_categories_loss/=pred_categories_loss
+      pred_categories_loss/=len(val_loader)
     val_pred_generics_losses.append(pred_generics_loss)
     
     loss_str=f"epoch {epoch}. lasso loss:{lasso_loss} log pred generics loss:{float(torch.log10(pred_generics_loss))},log pred extra generics loss:{float(torch.log10(pred_categories_loss))} pred generics loss:{float(pred_generics_loss)} pred extra generics loss:{float(pred_categories_loss)}"
@@ -122,29 +123,24 @@ def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_
         torch.save({"model":model.state_dict(),"optim":optim.state_dict()},folder+f"/epoch{epoch}.pt")
         with open(os.path.join(folder,"log"),"w") as file:
           file.write(log)
-    if len(val_pred_generics_losses)>10 and val_pred_generics_losses[-1]+val_pred_generics_losses[-2]+val_pred_generics_losses[-3]>val_pred_generics_losses[-4]+val_pred_generics_losses[-5]+val_pred_generics_losses[-6]>val_pred_generics_losses[-7]+val_pred_generics_losses[-8]+val_pred_generics_losses[-9]:
+    if auto_stop and len(val_pred_generics_losses)>10 and val_pred_generics_losses[-1]+val_pred_generics_losses[-2]+val_pred_generics_losses[-3]>val_pred_generics_losses[-4]+val_pred_generics_losses[-5]+val_pred_generics_losses[-6]>val_pred_generics_losses[-7]+val_pred_generics_losses[-8]+val_pred_generics_losses[-9]:
       break
     print(loss_str)
-if __name__=="__main__":
 
-  
+if __name__=="__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
-  parser.add_argument("-i","--inference_dir",default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference",type=str, help="the directory for the data required for inference.defaults to preprocessing_dir/inference")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess1", help="the directory for this preprocessing run")
+  parser.add_argument("-i","--inference_dir",default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess1/inference",type=str, help="the directory for the data required for inference.defaults to preprocessing_dir/inference")
   parser.add_argument("--lr",type=float,default=3e-4,help="learning rate")
   parser.add_argument("--batch_size",type=int,default=256,help="batch size")
-  parser.add_argument("--lasso_weight",type=float,default=1e-5,help="weight of lasso loss")
+  parser.add_argument("--lasso_weight",type=float,default=1e-7,help="weight of lasso loss")
   parser.add_argument("--continue_from","-c",type=int,default=None,help="epoch to continue from (-1 for last model run)")
   parser.add_argument("--override_previous","-o",action="store_true",help="override previous model run")
   parser.add_argument("--end_epoch",type=int,default=300,help="end epoch")
   parser.add_argument("--n_epoch",type=int,default=None,help="number of epochs to run (overrides end epoch)")
   parser.add_argument("--run_name",type=str,default=None,help="name for model run (if none, defaults to hyperparameters)")
+  parser.add_argument("--auto_stop",type=bool,default=True,help="stop when the validation loss stops decreasing")
   args,unknown = parser.parse_known_args()
 
-  for lr in [3e-4,3e-5,3e-6]:
-    for lasso_weight in [1e-4,1e-5,1e-6,1e-7,0]:
-        train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=args.inference_dir,lr=lr,batch_size=256,
-                lasso_weight=lasso_weight,continue_from=None, override_previous=True,end_epoch=None,n_epochs=200)
-
-  # train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=args.inference_dir,lr=args.lr,batch_size=args.batch_size,
-  #             lasso_weight=args.lasso_weight,continue_from=args.continue_from, override_previous=True,end_epoch=args.end_epoch,n_epochs=args.n_epoch)
+train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=args.inference_dir,lr=args.lr,batch_size=args.batch_size,
+              lasso_weight=args.lasso_weight,continue_from=args.continue_from, override_previous=True,end_epoch=args.end_epoch,n_epochs=args.n_epoch,auto_stop=args.auto_stop)

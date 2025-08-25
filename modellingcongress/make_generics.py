@@ -12,8 +12,8 @@ import os
 
 # Extract all committee spellings
 
-committee_search_item={}
 def all_committee_spellings(committees):
+  committee_search_item={}
   committee_spellings={committee:[committee] for committee in committees}
   for committee in committees:
     committee_spellings[committee]=[]
@@ -41,7 +41,7 @@ def all_committee_spellings(committees):
     if re.search("committee",committee) and re.search("(House )|(Senate )",committee):
         committee_spellings[committee].append(re.sub("(Subcommittee on )|(Subcommittee for )|(Subcommittee )|( Subcommittee)|(Committee on )|(Committee for )|( Committee)|(Committee )|(Senate )|(House )","",committee))
     committee_search_item[committee]=re.sub("(Subcommittee on )|(Subcommittee for )|(Subcommittee )|( Subcommittee)|(Committee on )|(Committee for )|( Committee)|(Committee )|(Senate )|(House )","",committee)
-    return committee_spellings,committee_search_item
+  return committee_spellings,committee_search_item
 def get_action_committee_map(actions,committee_search_item):
   action_committees_map={}
   for action in actions:
@@ -54,7 +54,7 @@ def get_action_committee_map(actions,committee_search_item):
 # Process action to get rid of committee names, representative names, times, parentheticals, numbers
 # in order to compare actions. These are bill specific and we want the generic version
 action_process_map={} # a cache for the below function
-def process_action(action):
+def process_action(action,committee_search_item,committee_spellings):
   if action in action_process_map:
     return action_process_map[action]
   action=action.lower()
@@ -68,12 +68,13 @@ def process_action(action):
     committee_spellings_regex="|".join(["("+")|(".join(committee_spellings[committee])+")" for committee in subcommittees]).lower()
     action = re.sub(committee_spellings_regex,"subcommittee",action)
   action=re.sub(r"\,|\.|\-"," ",action)
+  action = re.sub(r'(\w+ hours)|(\w+ hour)|(\w+ minutes)', 'time',action)
   action=re.sub(r"[0-9]","",action)
   action=re.sub(r" +"," ",action)
-  action = re.sub(r'\b(mr|mrs|ms|senator|representative) \w+\s', 'representative ',action)
-  action = re.sub(r'(\w+ hour)|(\w+ minutes)', 'time',action)
+  action = re.sub(r'\b(mr|mrs|ms|senator|representative) \w+\b', 'representative',action)
   action = re.sub(r'\(.*?\)', '',action)
   action=re.sub(r" +"," ",action)
+  action=action.strip()
   action_process_map[action]=action
   return action
 
@@ -87,6 +88,7 @@ def edit_distance(l1,l2):
     for j in range(1,len(l1)+1):
       dp[i,j]=min(dp[i][j-1]+1,dp[i-1][j]+1,dp[i-1][j-1] if l1[j-1]==l2[i-1] else dp[i-1][j-1]+1)
   return dp[-1,-1]
+
 
 # Check if the edit distance between two lists/strings is below a threshold
 # Uses tricks to speed up operation
@@ -123,9 +125,9 @@ def edit_distance_below(l1,l2,threshold):
 
 
 # check if two actions are similar (have small edit distance) after processing
-def similar_after_processing(action1,action2,threshold):
-  action1=process_action(action1)
-  action2=process_action(action2)
+def similar_after_processing(action1,action2,process,threshold):
+  action1=process(action1)
+  action2=process(action2)
 
   mustmatch_regexes=["subcommittee"]
   for regex in mustmatch_regexes:
@@ -147,7 +149,7 @@ def special_generics_f(action):
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description="makes generics by manually stripping out names and combining actions with small edit distance")
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess0", help="the directory for this preprocessing run")
   parser.add_argument("--threshold","-t",type=float,default=1/7,help="the max value of threshold*max(action1 length,action 2 length) for which the two actions will have the same generic")
   args,unknown = parser.parse_known_args()
 
@@ -162,14 +164,12 @@ if __name__=="__main__":
   history_df=pd.concat([pd.read_csv(dataset) for dataset in datasets])
   actions = sorted(list(history_df["action"]))
 
-  # Map from action to the committees it is in
-  action_committees_map=get_action_committee_map(actions,committee_search_item)
-  with open(os.path.join(args.preprocessing_dir,"action_committee_map.json"),"w") as file:
-    json.dump(action_committees_map,file,indent=2)
-  # with open(os.path.join(args.preprocessing_dir,"action_committee_map.json"),"r") as file:
-  #   action_committees_map=json.load(file)
-  
-  generics_dict = cluster(actions,lambda action1,action2:similar_after_processing(action1,action2,args.threshold),special_generics_f)
+  # # Map from action to the committees it is in
+  # action_committees_map=get_action_committee_map(actions,committee_search_item)
+  # with open(os.path.join(args.preprocessing_dir,"action_committee_map.json"),"w") as file:
+  #   json.dump(action_committees_map,file,indent=2)
+
+  generics_dict = cluster(actions,lambda action1,action2:similar_after_processing(action1,action2,lambda x:process_action(x,committee_search_item,committee_spellings),args.threshold),special_generics_f)
   with open(os.path.join(args.preprocessing_dir,"generics_dict_manual.json"),"w") as file:
     json.dump(generics_dict,file,indent=2)
 

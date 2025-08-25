@@ -59,7 +59,7 @@ class CreateInputsOutputs():
       chamber_vec[1]=1
     term_vec=np.zeros(n_terms)
     if term:
-      term_vec[term-min_term]=1
+      term_vec[int(term-min_term)]=1
     
     prev_recent_generics=prev_input_vector[:len(self.generics)]
     prev_cumulative_generics=prev_input_vector[len(self.generics):2*len(self.generics)]
@@ -113,7 +113,7 @@ class CreateInputsOutputs():
 if __name__=="__main__":
 
   parser = argparse.ArgumentParser(description="prepare data with generics")
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess1", help="the directory for this preprocessing run")
   parser.add_argument("-i","--inference_dir",default=None,type=str, help="the directory for the data required for inference.defaults to preprocessing_dir/inference")
   
   parser.add_argument("--decay_factor",type=float,default=2/3,help="the factor by which the previous generics decay for recent_generics vectors")

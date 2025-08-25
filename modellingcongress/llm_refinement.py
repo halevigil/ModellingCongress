@@ -16,7 +16,9 @@ if __package__:
 else:
   from make_generics import edit_distance_below
 
-def llm_input(generic_names):
+def llm_input(generics):
+  generics_s="\n".join(generics)
+
   return f"""I am analyzing a dataset full of Congressional actions. I want to refine each action to clean them up and remove the names and descriptions of congresspeople, bills, amendments, times, votes, rules and committees.
 Some notes to help you: 
 H.R. and S. are bills. H.Res., S.Res. and H./S.Con.Res are resolutions. Amdt. are amendments.
@@ -124,7 +126,7 @@ Action: ORDER OF PROCEDURE - Mr. Diaz-Balart asked unanimous consent for an addi
 Action: ORDER OF PROCEDURE - [REPRESENTATIVE] asked unanimous consent for an additional [TIME] of debate on each side of the aisle. Agreed to without objection.
 
 Now, please come up with a refinement for the following actions. Please only give me the refinements, one per line in the same order as given in, nothing else in your response. If there is just one action, just give me the refinement for that action:
-{"\n".join(generic_names)}"""
+{generics_s}"""
 
 
 
@@ -200,15 +202,18 @@ def manual_refinement(name):
   name=name.strip()
   return name
 
+# Create refinements from actions
 def create_refinements(actions):
   out=[]
   for action_minibatch in np.array_split(actions,range(5,len(actions),5)):
     out.extend(create_refinements_minibatch(action_minibatch))
   return out
   
+# Create refinements from a minibatch (usually of size 5) of actions
 def create_refinements_minibatch(actions):
   inpt = llm_input(actions)
   client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
+  # Tries 5 times to come up with refinements, as someitmes the LLM will miss lines
   for i in range(5):
     response = client.responses.create(input=inpt,model="gpt-5")
     try:
@@ -220,20 +225,20 @@ def create_refinements_minibatch(actions):
   return actions
   
 
-
-def create_refinement_map(actions,dir):
+# Creates a refinement map from llm_output
+# Returns the refinement map and all the minibatches that were incomplete
+def create_refinement_map(actions,llm_output_dir):
   refinements=[None for i in range(len(actions))]
   incomplete=[]
   response_start=0
   refinement_map={}
-  for path in [os.path.join(dir,f"batch{batch_i}.jsonl") for batch_i in range(len(os.listdir(dir)))]:
+  for path in [os.path.join(llm_output_dir,f"batch{batch_i}.jsonl") for batch_i in range(len(os.listdir(llm_output_dir)))]:
     with open(path,"r") as file:
       for response in file:
         text = json.loads(response)["response"]["body"]["output"][1]["content"][0]["text"]
-        # print("text:",text)
         actions_minibatch = actions[response_start:response_start+5]
-        # print("actions_minibatch:",actions_minibatch)
         refinements=[x for x in text.split("\n") if x!=""]
+        # If not exactly 5 (minibatch size) refinements were returned, add to incomplete so it can be manually processed afterwards
         if len(refinements)!=5:
           response_start+=5
           incomplete.append((actions_minibatch,refinements))
@@ -242,15 +247,13 @@ def create_refinement_map(actions,dir):
           print(action,":",refinement)
           refinement_map[action]=refinement
         response_start+=5
-  # for action in refinement_map:
-  #   refinement_map[action]=manual_refinement(refinement_map[action])
   return refinement_map,incomplete
 
 
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description="uses llm to refine manual generics")
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess0", help="the directory for this preprocessing run")
   parser.add_argument("--batch_size",type=int,default=750)
   parser.add_argument("--overwrite",action="store_true")
   parser.add_argument("--batch_is",nargs="*")
@@ -275,13 +278,11 @@ if __name__=="__main__":
   with open(os.path.join(args.preprocessing_dir,"generics_dict_manual.json"),"r") as file:
     generics_dict = json.load(file)
   generics=list(generics_dict.keys())
-  # create_batches(generics,os.path.join(args.preprocessing_dir,"llm_refinement_input"),args.batch_size)
-  # run_batches(os.path.join(args.preprocessing_dir,"llm_refinement_input"),os.path.join(args.preprocessing_dir,"llm_refinement_output"),range(9))
+  create_batches(generics,os.path.join(args.preprocessing_dir,"llm_refinement_input"),args.batch_size)
+  run_batches(os.path.join(args.preprocessing_dir,"llm_refinement_input"),os.path.join(args.preprocessing_dir,"llm_refinement_output"))
   refinement_map,incomplete = create_refinement_map(generics,os.path.join(args.preprocessing_dir,"llm_refinement_output"))
   for actions5, _ in incomplete:
-    refinement_map.update(create_refinements_nobatch(actions5))
+    refinement_map.update(create_refinements(actions5))
 
   with open(os.path.join(args.preprocessing_dir,"refinement_map.json"),"w") as file:
     json.dump(refinement_map,file,indent=2)
-  # Then you would manually inspect manually_inspect
-  # and change refinement_map either manually or programmatically

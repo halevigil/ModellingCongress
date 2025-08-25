@@ -1,5 +1,3 @@
-import pytest
-import sys
 # from clustering_util import cluster
 from ..clustering_util import cluster
 
@@ -12,6 +10,7 @@ def test_basic_clustering():
   assert result['a'] == ['a', 'a']
   assert result['b'] == ['b', 'b']
   assert result['c'] == ['c']
+
 
 def test_empty_list():
   assert cluster([], lambda x,y: x==y) == {}
@@ -36,13 +35,7 @@ def test_custom_cluster_names():
 
 def test_all_similar():
   actions = ['x', 'x', 'x', 'x']
-  def similar(x, y): return True
+  def similar(_x, _y): return True
   result = cluster(actions, similar)
   assert len(result) == 1
   assert list(result.values())[0] == actions
-if __name__=="__main__":
-  test_basic_clustering()
-  test_empty_list()
-  test_custom_cluster_names()
-  test_special_cluster()
-  test_all_similar()

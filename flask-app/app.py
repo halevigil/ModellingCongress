@@ -3,8 +3,8 @@ import json
 import dotenv
 dotenv.load_dotenv()
 from typing import List, Dict, Tuple
-from modellingcongress.inference import predict_action_from_seq
 import os
+from modellingcongress.inference import predict_action_from_seq
 from urllib.parse import quote, unquote
 
 
@@ -59,11 +59,6 @@ class CongressionalActionPredictor:
                 "Override Vote - Voting Rights Protection",
                 "Markup Session - Housing Policy Reform"
             ]
-        
-        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        # # if self.model:
-        # #     self.model.to(self.device)
-        # #     self.model.eval()
     
     def predict_next_actions(self, action_sequence: List[str]) -> List[Tuple[str, float]]:
         """
@@ -149,7 +144,8 @@ class CongressionalActionPredictor:
         return action_description in self.action_descriptions
 
 # Initialize the predictor
-predictor = CongressionalActionPredictor("lr3e-04_lassoweight0e+00_batch256",inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
+predictor = CongressionalActionPredictor("lr3e-04_lassoweight1e-07_batch256",inference_dir="inference") 
+
 
 def get_current_sequence():
     """Get the current action sequence from session"""

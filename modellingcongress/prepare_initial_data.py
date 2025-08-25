@@ -9,7 +9,7 @@ import argparse
 
 
 parser = argparse.ArgumentParser(description="prepare data before creating generics")
-parser.add_argument("-d","--preprocessing_dir",type=str,default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0", help="the directory for this preprocessing run")
+parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess1", help="the directory for this preprocessing run")
 args,unknown = parser.parse_known_args()
 
 datasets = [f"./data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
@@ -21,7 +21,7 @@ history_df=pd.concat(history_df_by_term)
 
 bills=[group for (bill_id,group) in history_df.groupby("bill_id")]
 for bill in bills:
-  bill.loc[-1]=bill.iloc[-1]
-  bill.at[-1,"action"]="Last Action"
-
+  bill.loc[len(bill)]=bill.iloc[-1]
+  bill.at[len(bill)-1,"action"]="No further actions."
+history_df=pd.concat(bills)
 history_df.to_csv(os.path.join(args.preprocessing_dir,"initial_data.csv"),index=False)
