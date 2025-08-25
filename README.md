@@ -2,6 +2,10 @@
 
 Modelling the path of bills through congress, which actions on a bill are likely to come after which others:
 
+
+https://github.com/user-attachments/assets/e47f7686-b91d-44e3-9d74-54c9900135bd
+
+
 Explore for yourself:
 https://modellingcongress-hidden-breeze-6910.fly.dev/
 
