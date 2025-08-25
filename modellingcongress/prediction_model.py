@@ -129,8 +129,8 @@ def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess1", help="the directory for this preprocessing run")
-  parser.add_argument("-i","--inference_dir",default="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess1/inference",type=str, help="the directory for the data required for inference.defaults to preprocessing_dir/inference")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess1", help="the directory for this preprocessing run")
+  parser.add_argument("-i","--inference_dir",default="/outputs/preprocess1",type=str, help="the directory for the data required for inference.defaults to preprocessing_dir/inference")
   parser.add_argument("--lr",type=float,default=3e-4,help="learning rate")
   parser.add_argument("--batch_size",type=int,default=256,help="batch size")
   parser.add_argument("--lasso_weight",type=float,default=1e-7,help="weight of lasso loss")
