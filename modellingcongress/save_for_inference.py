@@ -8,7 +8,7 @@ import numpy as np
 
 parser = argparse.ArgumentParser(description="save model for inference")
 parser.add_argument("-i","--inference_dir",default="outputs/preprocess1/inference",type=str, help="the directory for the data required for inference")  
-parser.add_argument("-m","--model_path",type=str,default="outputs/preprocess1/models/lr3e-04_lassoweight1e-07_batch256/epoch180.pt")  
+parser.add_argument("-m","--model_path",type=str,default="outputs/preprocess1/models/lr3e-04_lassoweight1e-07_batch256/epoch90.pt")  
 parser.add_argument("-o","--output_model_name",default=None,type=str, help="the output model name, defaults to last dir in model_path")  
 
 

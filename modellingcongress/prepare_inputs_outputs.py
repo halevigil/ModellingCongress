@@ -10,7 +10,7 @@ import pickle
 
 
 
-
+# Class for creating input and output vectors
 class CreateInputsOutputs():
   def __init__(self,inference_dir):
     self.inference_dir=inference_dir
@@ -29,7 +29,7 @@ class CreateInputsOutputs():
     return self.generics
   
   def get_categories(self):
-    return self.generics
+    return self.categories
   def input_length(self):
     return 2*len(self.generics)+2*len(self.categories)+2+self.processing["n_terms"]
   def output_length(self):

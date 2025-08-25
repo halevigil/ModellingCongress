@@ -1,6 +1,7 @@
 from collections import defaultdict
 
-
+# Cluster actions that are similar into the same cluster, via one representative for each cluster
+# also have special_cluster function for pre-defined clusters that
 def cluster(actions,similar,special_cluster_f = lambda x:None,cluster_names_f=lambda x:x):
   special_clusters=defaultdict(list)
   cluster_list=[]

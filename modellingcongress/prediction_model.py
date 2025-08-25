@@ -117,7 +117,7 @@ def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_
       pred_categories_loss/=len(val_loader)
     val_pred_generics_losses.append(pred_generics_loss)
     
-    loss_str=f"epoch {epoch}. lasso loss:{lasso_loss} log pred generics loss:{float(torch.log10(pred_generics_loss))},log pred extra generics loss:{float(torch.log10(pred_categories_loss))} pred generics loss:{float(pred_generics_loss)} pred extra generics loss:{float(pred_categories_loss)}"
+    loss_str=f"epoch {epoch}. lasso loss:{lasso_loss} log pred generics loss:{float(torch.log10(pred_generics_loss))},log pred categories loss:{float(torch.log10(pred_categories_loss))} pred generics loss:{float(pred_generics_loss)} pred categories loss:{float(pred_categories_loss)}"
     log+=loss_str+"\n"
     if epoch%5==0:
         torch.save({"model":model.state_dict(),"optim":optim.state_dict()},folder+f"/epoch{epoch}.pt")

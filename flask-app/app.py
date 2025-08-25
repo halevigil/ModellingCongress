@@ -70,51 +70,8 @@ class CongressionalActionPredictor:
         Returns:
             List of tuples: (action_description, probability)
         """
-        if not self.model:
-            # Placeholder predictions for demo - replace with actual model inference
-            import random
-            import hashlib
-            
-            # Use hash of sequence for deterministic but varied results
-            sequence_hash = hashlib.md5(''.join(action_sequence).encode()).hexdigest()
-            random.seed(int(sequence_hash[:8], 16))
-            
-            predictions = []
-            for description in self.action_descriptions:
-                # Create somewhat realistic probability distribution
-                base_prob = random.uniform(0.01, 0.15)
-                
-                # Make some actions more likely based on sequence context
-                if len(action_sequence) > 0:
-                    last_action = action_sequence[-1]
-                    
-                    # Increase probability for related actions
-                    if any(keyword in description.lower() and keyword in last_action.lower() 
-                           for keyword in ['bill', 'committee', 'vote', 'amendment', 'hearing']):
-                        base_prob *= 2
-                    
-                    # Sequential flow: hearing → markup → vote → passage
-                    if 'hearing' in last_action.lower() and 'markup' in description.lower():
-                        base_prob *= 3
-                    elif 'markup' in last_action.lower() and 'vote' in description.lower():
-                        base_prob *= 3
-                    elif 'vote' in last_action.lower() and 'passage' in description.lower():
-                        base_prob *= 3
-                    
-                    # Avoid immediate repetition of same action type
-                    if description == last_action:
-                        base_prob *= 0.1
-                
-                predictions.append((description, base_prob))
-            
-            # Normalize probabilities
-            total_prob = sum(p[1] for p in predictions)
-            predictions = [(desc, prob/total_prob) for desc, prob in predictions]
-            
-            # Sort by probability (highest first)
-            predictions.sort(key=lambda x: x[1], reverse=True)
-            return predictions
-        
+        if action_sequence and action_sequence[-1]=="No further actions.":
+            return []
         return list(predict_action_from_seq(self.model,action_sequence,self.inference_dir)[0].items())
         # Actual model inference code would go here:
         # You'll need to implement a mapping between action descriptions and model indices
@@ -202,17 +159,16 @@ def index():
         all_predictions = predictor.predict_next_actions(action_sequence)
         
         # Filter predictions based on search query
-        filtered_predictions = filter_predictions(all_predictions, search_query)
-        
+        filtered_predictions = sorted(filter_predictions(all_predictions, search_query), key=lambda x:x[1],reverse=True)
         # Format predictions for display
-        predictions_display = sorted([
+        predictions_display = [
             {
                 'description': description,
                 'encoded_description': encode_action_description(description),
                 'probability': round(prob * 100, 2)
             }
             for description, prob in filtered_predictions
-        ],key=lambda x:x["probability"],reverse=True)
+        ]
         
         # Get sequence with step numbers
         sequence_display = [
@@ -222,7 +178,6 @@ def index():
             }
             for i, description in enumerate(action_sequence)
         ]
-        
         # Calculate statistics
         stats = {
             'sequence_length': len(action_sequence),

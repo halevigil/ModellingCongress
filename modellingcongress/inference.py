@@ -3,6 +3,7 @@ import dotenv
 import openai
 import onnx
 from scipy.special import softmax,expit
+from IPython import display
 
 import onnxruntime as ort
 
@@ -60,25 +61,6 @@ def predict_action_from_seq(model_name,prev_actions,inference_dir,prev_input_vec
   output[len(input_output_creator.get_generics()):]=expit(output[len(input_output_creator.get_generics()):])
   probabilities=input_output_creator.vector_to_probabilities(output)
   return probabilities
-# def predict_action_from_last(model,action,inference_dir,prev_input_vector=None,need_refinement=False,need_to_make_generic=False,chamber=None,term=None):
-#   input_output_creator = CreateInputsOutputs(inference_dir)
-#   if need_refinement:
-#     refined_action=create_refinements([action])[0]
-#   else:
-#     refined_action=action
-#   if need_to_make_generic:
-#     generic = make_generic(refined_action,input_output_creator.get_generics())
-#   else:
-#     generic=refined_action
-#   categories = categorize(action)
-#   prev_output_vectors=input_output_creator.create_output_vector(generic,categories)
-#   input_vectors = torch.from_numpy(input_output_creator.create_input_vector(prev_input_vector=prev_input_vector,prev_output_vector=input_output_creator.create_output_vector(generic,categories),chamber=chamber,term=term)).float()
-#   with torch.no_grad():
-#     output=model(input_vectors)
-#   output[:len(input_output_creator.get_generics())]=torch.nn.functional.softmax(output[:len(input_output_creator.get_generics())],dim=0)
-#   output[len(input_output_creator.get_generics()):]=torch.nn.functional.sigmoid(output[len(input_output_creator.get_generics()):])
-#   probabilities=input_output_creator.vector_to_probabilities(output)
-#   return probabilities
 
 if __name__=="__main__":
   predicted_generics,predicted_categories = predict_action_from_seq("lr3e-04_lassoweight0e+00_batch256",

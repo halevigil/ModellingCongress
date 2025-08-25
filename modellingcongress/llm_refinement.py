@@ -16,6 +16,7 @@ if __package__:
 else:
   from make_generics import edit_distance_below
 
+# creates input for llm
 def llm_input(generics):
   generics_s="\n".join(generics)
 
