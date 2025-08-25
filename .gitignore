@@ -11,3 +11,4 @@ modellingcongress/embedding.py
 __pycache__
 web-app/*
 node_modules
+fly.toml

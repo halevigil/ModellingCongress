@@ -16,7 +16,6 @@ If you'd like to build the model youself:
 1. Download the dataset from each congress term, and unzip them all into the data folder:
 
 ```text
-.
 ├── data
 │   ├── 2009-2010_112th_Congress/
 │   ├── 2011-2012_112th_Congress/
