@@ -152,6 +152,7 @@ def create_batches(actions,input_dir,batch_size):
   return len(paths)
 
 def run_batches(input_dir,output_dir,batch_is=None):
+  dotenv.load_dotenv()
   client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
 
   n_batches = len(os.listdir(input_dir))
@@ -205,6 +206,8 @@ def manual_refinement(name):
 
 # Create refinements from actions
 def create_refinements(actions):
+  dotenv.load_dotenv()
+  client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
   out=[]
   for action_minibatch in np.array_split(actions,range(5,len(actions),5)):
     out.extend(create_refinements_minibatch(action_minibatch))
@@ -212,8 +215,9 @@ def create_refinements(actions):
   
 # Create refinements from a minibatch (usually of size 5) of actions
 def create_refinements_minibatch(actions):
-  inpt = llm_input(actions)
+  dotenv.load_dotenv()
   client = openai.Client(api_key=os.environ["OPENAI_API_KEY"])
+  inpt = llm_input(actions)
   # Tries 5 times to come up with refinements, as someitmes the LLM will miss lines
   for i in range(5):
     response = client.responses.create(input=inpt,model="gpt-5")
@@ -249,9 +253,6 @@ def create_refinement_map(actions,llm_output_dir):
           refinement_map[action]=refinement
         response_start+=5
   return refinement_map,incomplete
-
-
-
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description="uses llm to refine manual generics")
   parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess0", help="the directory for this preprocessing run")

@@ -24,4 +24,6 @@ If you'd like to build the model youself:
 │   └── 2025-2026_112th_Congress/
 ```
 
-2. Run run.py with argument --preprocessing_dir to the preprocessing directory that you'd like. Likely, it will be something like outputs/preprocess
+2. Add your open api key to the environment variables as OPENAI_API_KEY. You can add it to a dotenv file in the project root and it will load it automatically
+
+3. Run run.py with argument --preprocessing_dir to the preprocessing directory that you'd like. Likely, it will be something like outputs/preprocess
