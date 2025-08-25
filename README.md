@@ -1,10 +1,6 @@
 # Modelling-Congress
 
-Modelling the path of bills through congress, which actions on a bill are likely to come after which others.
-
-See
-
-https://github.com/user-attachments/assets/fbd8378c-6376-4ff6-88ef-73a31a45f2da
+Modelling the path of bills through congress, which actions on a bill are likely to come after which others:
 
 Explore for yourself:
 https://modellingcongress-hidden-breeze-6910.fly.dev/
