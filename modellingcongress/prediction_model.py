@@ -145,8 +145,8 @@ if __name__=="__main__":
   #   for lasso_weight in [1e-6,1e-5,1e-7]:
   #     train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=inference_dir,lr=lr,batch_size=args.batch_size,
   #             lasso_weight=lasso_weight,continue_from=-1, override_previous=True,end_epoch=20,n_epochs=args.n_epoch,auto_stop=args.auto_stop)
-  # for lr in [3e-4,3e-5,3e-3]:
-  for lasso_weight in [1e-7,1e-5]:
-    train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=inference_dir,lr=lr,batch_size=args.batch_size,
-            lasso_weight=lasso_weight,continue_from=None, override_previous=True,end_epoch=100,n_epochs=args.n_epoch,auto_stop=args.auto_stop)
-    
+  for lr in [3e-3]:
+    for lasso_weight in [1e-8]:
+      train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=inference_dir,lr=lr,batch_size=args.batch_size,
+              lasso_weight=lasso_weight,continue_from=-1, override_previous=False,end_epoch=25,n_epochs=args.n_epoch,auto_stop=args.auto_stop)
+      

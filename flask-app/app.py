@@ -4,7 +4,7 @@ import dotenv
 dotenv.load_dotenv()
 from typing import List, Dict, Tuple
 import os
-from inference import predict_action_from_seq
+from modellingcongress.inference import predict_action_from_seq
 from urllib.parse import quote, unquote
 
 
@@ -101,7 +101,7 @@ class CongressionalActionPredictor:
         return action_description in self.action_descriptions
 
 # Initialize the predictor
-predictor = CongressionalActionPredictor("model",inference_dir="outputs/preprocess5/inference") 
+predictor = CongressionalActionPredictor("model",inference_dir="inference") 
 
 
 def get_current_sequence():
