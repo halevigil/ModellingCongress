@@ -4,7 +4,7 @@ import dotenv
 dotenv.load_dotenv()
 from typing import List, Dict, Tuple
 import os
-from modellingcongress.inference import predict_action_from_seq
+from inference import predict_action_from_seq
 from urllib.parse import quote, unquote
 
 
@@ -72,7 +72,7 @@ class CongressionalActionPredictor:
         """
         if action_sequence and action_sequence[-1]=="No further actions.":
             return []
-        return list(predict_action_from_seq(self.model,action_sequence,self.inference_dir)[0].items())
+        return [x for x in predict_action_from_seq(self.model,action_sequence,self.inference_dir).items() if x[0]!="Start of bill."]
         # Actual model inference code would go here:
         # You'll need to implement a mapping between action descriptions and model indices
         # For example:
@@ -101,7 +101,7 @@ class CongressionalActionPredictor:
         return action_description in self.action_descriptions
 
 # Initialize the predictor
-predictor = CongressionalActionPredictor("lr3e-04_lassoweight1e-07_batch256",inference_dir="inference") 
+predictor = CongressionalActionPredictor("model",inference_dir="outputs/preprocess5/inference") 
 
 
 def get_current_sequence():

@@ -3,7 +3,7 @@ import dotenv
 import openai
 import onnx
 from scipy.special import softmax,expit
-from IPython import display
+from IPython.display import display
 
 import onnxruntime as ort
 
@@ -18,10 +18,12 @@ if __package__:
   from .make_generics import edit_distance_below
   from .prepare_inputs_outputs import CreateInputsOutputs
   from .categorize import categorize
+  from .llm_refinement import create_refinements
 else:
   from make_generics import edit_distance_below
   from prepare_inputs_outputs import CreateInputsOutputs
   from categorize import categorize
+  from llm_refinement import create_refinements
 import openai
 import numpy as np
 import os
@@ -37,8 +39,9 @@ def make_generic(action,generics):
     if edit_distance_below(action,name,1/7*max(len(name),len(action))):
       return action
   return "Miscellaneous"
-def predict_action_from_seq(model_name,prev_actions,inference_dir,prev_input_vector=None,need_refinement=False,need_to_make_generic=False,chamber=None,term=None):
+def predict_action_from_seq(model_name,prev_actions,inference_dir,prev_input_vector = None,need_refinement=False,need_to_make_generic=False,chamber=None,term=None):
   input_output_creator = CreateInputsOutputs(inference_dir)
+  # prev_actions.insert(0,"Miscellaneous")
   if need_refinement:
     prev_refined_actions=create_refinements(prev_actions)
   else:
@@ -48,24 +51,23 @@ def predict_action_from_seq(model_name,prev_actions,inference_dir,prev_input_vec
   else:
     prev_generics=prev_refined_actions
   prev_categories = [categorize(action) for action in prev_actions]
-  input_vector = prev_input_vector or input_output_creator.create_input_vector()
+  input_vector = prev_input_vector or input_output_creator.create_input_vector(prev_generic="Start of bill.")
+  # input_vector = prev_input_vector or input_output_creator.create_input_vector()
   for generic,categories in zip(prev_generics,prev_categories):
-    prev_output = input_output_creator.create_output_vector(generic,categories)
-    input_vector = input_output_creator.create_input_vector(prev_input_vector=input_vector,prev_output_vector=prev_output,chamber=chamber,term=term)
-
+    input_vector = input_output_creator.create_input_vector(prev_input_vector=input_vector,prev_generic=generic,prev_categories=categories,chamber=chamber,term=term)
   input_vector = input_vector.astype(np.float32)
   sess = ort.InferenceSession(os.path.join(inference_dir,model_name+".onnx"))
   output=sess.run(None,{"input":input_vector.astype(np.float32)})[0]
-
-  output[:len(input_output_creator.get_generics())]=softmax(output[:len(input_output_creator.get_generics())],axis=0)
-  output[len(input_output_creator.get_generics()):]=expit(output[len(input_output_creator.get_generics()):])
+  
   probabilities=input_output_creator.vector_to_probabilities(output)
   return probabilities
 
 if __name__=="__main__":
-  predicted_generics,predicted_categories = predict_action_from_seq("lr3e-04_lassoweight0e+00_batch256",
-                                                                    prev_actions=["Presented to the President."],
-                                                                    inference_dir="/Users/gilhalevi/Library/CloudStorage/OneDrive-Personal/Code/ModellingCongress/outputs/preprocess0/inference")
+  predicted_generics = predict_action_from_seq("model",
+                                                                    prev_actions=["Introduced in the House.","Referred to [SUBCOMMITTEE]"],
+                                                                    inference_dir="outputs/preprocess5/inference")
+  # predicted_generics=[x for x in predicted_generics]
+  
   display(sorted(predicted_generics.items(),key=lambda x:x[1],reverse=True))
   
 

@@ -9,7 +9,7 @@ import argparse
 
 
 parser = argparse.ArgumentParser(description="prepare data before creating generics")
-parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess1", help="the directory for this preprocessing run")
+parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess2", help="the directory for this preprocessing run")
 args,unknown = parser.parse_known_args()
 
 datasets = [f"./data/{term*2+2009-222}-{term*2+2010-222}_{term}th_Congress/csv/history.csv" for term in range(111,120)]
@@ -20,8 +20,12 @@ history_df=pd.concat(history_df_by_term)
 
 
 bills=[group for (bill_id,group) in history_df.groupby("bill_id")]
-for bill in bills:
-  bill.loc[len(bill)]=bill.iloc[-1]
-  bill.at[len(bill)-1,"action"]="No further actions."
-history_df=pd.concat(bills)
-history_df.to_csv(os.path.join(args.preprocessing_dir,"initial_data.csv"),index=False)
+
+for i,bill in enumerate(bills):
+  first_row = bill.iloc[0].copy()
+  first_row["action"]= "Start of bill."
+  last_row = bill.iloc[-1].copy()
+  last_row["action"] = "No further actions."
+  bills[i]=pd.concat([pd.DataFrame([first_row]),bill,pd.DataFrame([last_row])])
+history_df_with_end=pd.concat(bills)
+history_df_with_end.to_csv(os.path.join(args.preprocessing_dir,"initial_data.csv"),index=False)

@@ -19,16 +19,13 @@ import argparse
 
 
 class ActionDataset(torch.utils.data.Dataset):
-  def __init__(self,inputs,outputs,generics_len):
+  def __init__(self,inputs,outputs):
     self.inputs=inputs
     self.outputs=outputs
-    self.GENERICS_LEN=generics_len
   def input_len(self):
      return len(self.inputs[0])
   def output_len(self):
      return len(self.outputs[0])
-  def generics_len(self):
-     return self.GENERICS_LEN
   def categories_len(self):
      return len(self.outputs[0])-len(self.inputs[0])
   
@@ -42,11 +39,9 @@ class ActionDataset(torch.utils.data.Dataset):
 def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_size=256,continue_from=None,run_name=None,override_previous=False,end_epoch=300,n_epochs=None,auto_stop=True):
   hyperparams={"lr":lr,"lasso_weight":lasso_weight,"batch size":batch_size}
   print("hyperparameters:",hyperparams)
-  with open(os.path.join(inference_dir,"generics.json"),"r") as file:
-    generics = json.load(file)
   input_vectors=np.load(os.path.join(preprocessing_dir,"input_vectors.npy"))
   output_vectors=np.load(os.path.join(preprocessing_dir,"output_vectors.npy"))
-  ds = ActionDataset(input_vectors,output_vectors,len(generics))
+  ds = ActionDataset(input_vectors,output_vectors)
   train_dataset,val_dataset = torch.utils.data.random_split(ds,[0.8,0.2])
 
   train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=batch_size,shuffle=True)
@@ -83,7 +78,6 @@ def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_
     if continue_from and epoch>continue_from:
       os.remove(os.path.join(folder,f"epoch{epoch}.pt"))
   pred_generics_loss_fn = torch.nn.CrossEntropyLoss()
-  pred_categories_loss_fn = torch.nn.BCEWithLogitsLoss()
   if not os.path.isdir(folder):
       os.mkdir(folder)
   val_pred_generics_losses=[]
@@ -96,28 +90,30 @@ def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_
       inpt=inpt.float()
       output=output.float()
       pred = model(inpt)
-      pred_generics_loss = pred_generics_loss_fn(pred[:,:ds.generics_len()],output[:,:ds.generics_len()])
-      pred_categories_loss = pred_categories_loss_fn(pred[:,ds.generics_len():],output[:,ds.generics_len():])
+      pred_generics_loss = pred_generics_loss_fn(pred,output)
+      # pred_categories_loss = pred_categories_loss_fn(pred[:,ds.generics_len():],output[:,ds.generics_len():])
       
       lasso_loss = torch.norm(model.weight,p=1)
-      loss = pred_generics_loss+pred_categories_loss+lasso_weight*lasso_loss
+      loss = pred_generics_loss+lasso_weight*lasso_loss
       loss.backward()
       optim.step()
     with torch.no_grad():
       pred_generics_loss=torch.scalar_tensor(0)
-      pred_categories_loss=torch.scalar_tensor(0)
+      # pred_categories_loss=torch.scalar_tensor(0)
       lasso_loss=torch.norm(model.weight,p=1)
       for inpt,output in val_loader:
         inpt=inpt.float()
         output=output.float()
         pred = model(inpt)
-        pred_generics_loss += pred_generics_loss_fn(pred[:ds.generics_len()],output[:ds.generics_len()])
-        pred_categories_loss += pred_categories_loss_fn(pred[ds.generics_len():],output[ds.generics_len():])
+        pred_generics_loss += pred_generics_loss_fn(pred,output)
+        # pred_categories_loss += pred_categories_loss_fn(pred[ds.generics_len():],output[ds.generics_len():])
+        # pred_generics_loss += pred_generics_loss_fn(pred[:ds.generics_len()],output[:ds.generics_len()])
+        # pred_categories_loss += pred_categories_loss_fn(pred[ds.generics_len():],output[ds.generics_len():])
       pred_generics_loss/=len(val_loader)
-      pred_categories_loss/=len(val_loader)
+      # pred_categories_loss/=len(val_loader)
     val_pred_generics_losses.append(pred_generics_loss)
     
-    loss_str=f"epoch {epoch}. lasso loss:{lasso_loss} log pred generics loss:{float(torch.log10(pred_generics_loss))},log pred categories loss:{float(torch.log10(pred_categories_loss))} pred generics loss:{float(pred_generics_loss)} pred categories loss:{float(pred_categories_loss)}"
+    loss_str=f"epoch {epoch}. lasso loss:{lasso_loss} log pred generics loss:{float(torch.log10(pred_generics_loss))}"
     log+=loss_str+"\n"
     if epoch%5==0:
         torch.save({"model":model.state_dict(),"optim":optim.state_dict()},folder+f"/epoch{epoch}.pt")
@@ -129,18 +125,28 @@ def train_model(preprocessing_dir,inference_dir,lr=3e-4,lasso_weight=1e-5,batch_
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess1", help="the directory for this preprocessing run")
-  parser.add_argument("-i","--inference_dir",default="/outputs/preprocess1",type=str, help="the directory for the data required for inference.defaults to preprocessing_dir/inference")
+  parser.add_argument("-d","--preprocessing_dir",type=str,default="outputs/preprocess5", help="the directory for this preprocessing run")
+  parser.add_argument("-i","--inference_dir",default=None,type=str, help="the directory for the data required for inference. defaults to preprocessing_dir/inference")
   parser.add_argument("--lr",type=float,default=3e-4,help="learning rate")
   parser.add_argument("--batch_size",type=int,default=256,help="batch size")
   parser.add_argument("--lasso_weight",type=float,default=1e-7,help="weight of lasso loss")
   parser.add_argument("--continue_from","-c",type=int,default=None,help="epoch to continue from (-1 for last model run)")
   parser.add_argument("--override_previous","-o",action="store_true",help="override previous model run")
-  parser.add_argument("--end_epoch",type=int,default=300,help="end epoch")
+  parser.add_argument("--end_epoch",type=int,default=100,help="end epoch")
   parser.add_argument("--n_epoch",type=int,default=None,help="number of epochs to run (overrides end epoch)")
   parser.add_argument("--run_name",type=str,default=None,help="name for model run (if none, defaults to hyperparameters)")
   parser.add_argument("--auto_stop",type=bool,default=True,help="stop when the validation loss stops decreasing")
   args,unknown = parser.parse_known_args()
-
-train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=args.inference_dir,lr=args.lr,batch_size=args.batch_size,
-              lasso_weight=args.lasso_weight,continue_from=args.continue_from, override_previous=True,end_epoch=args.end_epoch,n_epochs=args.n_epoch,auto_stop=args.auto_stop)
+  
+  if not os.path.exists(os.path.join(args.preprocessing_dir,"models")):
+    os.mkdir(os.path.join(args.preprocessing_dir,"models"))
+  inference_dir = args.inference_dir or os.path.join(args.preprocessing_dir,"inference")
+  # for lr in [3e-4,3e-5]:
+  #   for lasso_weight in [1e-6,1e-5,1e-7]:
+  #     train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=inference_dir,lr=lr,batch_size=args.batch_size,
+  #             lasso_weight=lasso_weight,continue_from=-1, override_previous=True,end_epoch=20,n_epochs=args.n_epoch,auto_stop=args.auto_stop)
+  # for lr in [3e-4,3e-5,3e-3]:
+  for lasso_weight in [1e-7,1e-5]:
+    train_model(preprocessing_dir=args.preprocessing_dir,inference_dir=inference_dir,lr=lr,batch_size=args.batch_size,
+            lasso_weight=lasso_weight,continue_from=None, override_previous=True,end_epoch=100,n_epochs=args.n_epoch,auto_stop=args.auto_stop)
+    
